@@ -1,0 +1,32 @@
+# frozen_string_literal: true
+# Devuan libvirt proof for no systemd-sysv. Not evidence until vagrant up succeeds.
+
+venv_bin = File.expand_path("../../.venv/bin", __dir__)
+ENV["PATH"] = "#{venv_bin}:#{ENV['PATH']}" if File.directory?(venv_bin)
+
+Vagrant.configure("2") do |config|
+  config.vm.synced_folder ".", "/vagrant", disabled: true
+
+  config.vm.define "scanner-devuan" do |vm|
+    vm.vm.box = ENV.fetch("SCANNER_DEVUAN_BOX", "devuan-desktop")
+    vm.vm.hostname = "scanner-devuan"
+    vm.vm.provider :libvirt do |libvirt|
+      libvirt.memory = 2048
+      libvirt.cpus = 2
+    end
+    vm.vm.provision "shell", inline: <<~SHELL
+      export DEBIAN_FRONTEND=noninteractive
+      apt-get update -qq
+      apt-get install -y -qq rsync python3 python3-apt
+    SHELL
+    vm.vm.provision "ansible" do |ansible|
+      ansible.playbook = "../../playbooks/install.yml"
+      ansible.config_file = "../../ansible.cfg"
+      ansible.compatibility_mode = "2.0"
+      ansible.extra_vars = {
+        scanner_freshclam_enable: false,
+        scanner_schedule_enabled: false
+      }
+    end
+  end
+end

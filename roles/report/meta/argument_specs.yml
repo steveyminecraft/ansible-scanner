@@ -1,0 +1,13 @@
+---
+argument_specs:
+  main:
+    short_description: Install logrotate for linux-security reports.
+    options:
+      scanner_report_directory:
+        type: str
+        required: false
+        default: /var/log/linux-security
+      scanner_report_retention_days:
+        type: int
+        required: false
+        default: 90

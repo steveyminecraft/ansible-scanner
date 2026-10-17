@@ -1,0 +1,17 @@
+---
+- name: Converge linux-security v1
+  hosts: all
+  become: true
+  gather_facts: true
+  vars:
+    scanner_repo_root: "{{ lookup('env', 'MOLECULE_PROJECT_DIRECTORY') }}"
+    scanner_freshclam_enable: false
+    scanner_schedule_enabled: false
+    scanner_lynis_enabled: true
+  roles:
+    - role: common
+    - role: clamav
+    - role: report
+    - role: lynis
+    - role: aide
+    - role: rootkit

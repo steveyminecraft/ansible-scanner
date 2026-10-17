@@ -1,0 +1,5 @@
+---
+- name: Refuse rootkit scanners until a later slice
+  ansible.builtin.fail:
+    msg: rkhunter/chkrootkit are not implemented in v1.
+  when: (scanner_rkhunter_enabled | bool) or (scanner_chkrootkit_enabled | bool)

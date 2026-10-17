@@ -1,0 +1,18 @@
+---
+scanner_quick_paths:
+  - /tmp
+  - /var/tmp
+  - /home
+  - /root
+  - /usr/local
+  - /opt
+scanner_exclude_paths:
+  - /proc
+  - /sys
+  - /dev
+  - /run
+  - /var/lib/docker
+  - /var/lib/containerd
+  - /snap
+  - /mnt/array01
+scanner_cron_quick_schedule: "30 4 * * *"

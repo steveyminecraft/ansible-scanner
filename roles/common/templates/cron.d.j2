@@ -1,0 +1,9 @@
+# Managed by ansible-scanner. Do not edit.
+SHELL=/bin/sh
+PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin
+{% if scanner_schedule_enabled | bool %}
+{{ scanner_cron_quick_schedule }} root /usr/local/sbin/security-scan quick
+{% else %}
+# scanner_schedule_enabled is false — no jobs. Example:
+# {{ scanner_cron_quick_schedule }} root /usr/local/sbin/security-scan quick
+{% endif %}

@@ -1,0 +1,19 @@
+# Managed by ansible-scanner. Do not edit.
+# shellcheck shell=sh
+SCANNER_REPORT_DIR={{ scanner_report_directory | quote }}
+SCANNER_MIN_RAM_MIB={{ scanner_min_ram_mib | int }}
+SCANNER_CPU_NICE={{ scanner_scan_cpu_nice | int }}
+SCANNER_IO_PRIORITY={{ scanner_scan_io_priority | int }}
+SCANNER_QUICK_PATHS={{ scanner_quick_paths | join(' ') | quote }}
+SCANNER_FULL_PATHS={{ scanner_full_paths | default([]) | join(' ') | quote }}
+SCANNER_EXCLUDE_PATHS={{ scanner_exclude_paths | join(' ') | quote }}
+SCANNER_EXCLUDE_FS_TYPES={{ scanner_exclude_fs_types | join(' ') | quote }}
+SCANNER_CROSS_FS={{ 1 if scanner_cross_fs | bool else 0 }}
+SCANNER_CLAMAV_ENABLED={{ 1 if scanner_clamav_enabled | bool else 0 }}
+SCANNER_LYNIS_ENABLED={{ 1 if scanner_lynis_enabled | bool else 0 }}
+SCANNER_SKIP_ON_BATTERY={{ 1 if scanner_skip_on_battery | bool else 0 }}
+SCANNER_HEAVY_LOCK={{ scanner_heavy_lock | quote }}
+SCANNER_SCHEDULE_ENABLED={{ 1 if scanner_schedule_enabled | bool else 0 }}
+SCANNER_NTFY_URL={{ scanner_ntfy_url | quote }}
+SCANNER_SCAN_ZFS={{ 1 if scanner_scan_zfs_datasets | bool else 0 }}
+SCANNER_SCAN_NETWORK={{ 1 if scanner_scan_network_mounts | bool else 0 }}

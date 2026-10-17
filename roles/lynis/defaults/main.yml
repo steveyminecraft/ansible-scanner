@@ -1,0 +1,6 @@
+---
+scanner_lynis_enabled: false
+scanner_config_dir: /etc/linux-security
+scanner_lynis_cron_paths:
+  - /etc/cron.d/lynis
+  - /etc/cron.daily/lynis

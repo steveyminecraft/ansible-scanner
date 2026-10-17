@@ -1,0 +1,93 @@
+---
+- name: Skip Lynis when disabled
+  ansible.builtin.meta: end_role
+  when: not scanner_lynis_enabled | bool
+
+- name: Install Lynis (Debian family)
+  ansible.builtin.apt:
+    name: lynis
+    state: present
+    update_cache: true
+    cache_valid_time: 3600
+  when: ansible_facts['pkg_mgr'] == 'apt'
+
+- name: Install Lynis (RedHat family)
+  ansible.builtin.dnf:
+    name: lynis
+    state: present
+  when: ansible_facts['os_family'] == 'RedHat'
+
+- name: Ensure takeover directory
+  ansible.builtin.file:
+    path: "{{ scanner_config_dir }}/takeover"
+    state: directory
+    owner: root
+    group: root
+    mode: "0750"
+
+- name: Stat distro Lynis cron jobs
+  ansible.builtin.stat:
+    path: "{{ item }}"
+  loop: "{{ scanner_lynis_cron_paths }}"
+  register: scanner_lynis_cron_stat
+
+- name: Disable cron.d Lynis
+  ansible.builtin.command:
+    argv:
+      - mv
+      - -f
+      - "{{ item.stat.path }}"
+      - "{{ item.stat.path }}.disabled-by-ansible-scanner"
+  changed_when: true
+  loop: "{{ scanner_lynis_cron_stat.results }}"
+  loop_control:
+    label: "{{ item.stat.path | default(item.item) }}"
+  when:
+    - not ansible_check_mode
+    - item.stat.exists | default(false)
+    - "'/cron.d/' in item.stat.path"
+
+- name: Relocate cron.daily Lynis jobs
+  ansible.builtin.command:
+    argv:
+      - mv
+      - -f
+      - "{{ item.stat.path }}"
+      - "{{ scanner_config_dir }}/takeover/{{ item.stat.path | basename }}"
+  changed_when: true
+  loop: "{{ scanner_lynis_cron_stat.results }}"
+  loop_control:
+    label: "{{ item.stat.path | default(item.item) }}"
+  when:
+    - not ansible_check_mode
+    - item.stat.exists | default(false)
+    - "'/cron.daily/' in item.stat.path"
+
+- name: Stat disabled Lynis leftovers
+  ansible.builtin.stat:
+    path: "{{ item }}.disabled-by-ansible-scanner"
+  loop: "{{ scanner_lynis_cron_paths }}"
+  register: scanner_lynis_disabled_stat
+
+- name: Stat Lynis takeover copies
+  ansible.builtin.stat:
+    path: "{{ scanner_config_dir }}/takeover/{{ item | basename }}"
+  loop: "{{ scanner_lynis_cron_paths }}"
+  register: scanner_lynis_copied_stat
+
+- name: Record Lynis takeover
+  ansible.builtin.copy:
+    dest: "{{ scanner_config_dir }}/lynis-takeover"
+    owner: root
+    group: root
+    mode: "0644"
+    content: |
+      # Managed by ansible-scanner. Distro Lynis cron disabled.
+      {% for src in scanner_lynis_cron_paths %}
+      {% set idx = loop.index0 %}
+      {% if (scanner_lynis_cron_stat.results[idx].stat.exists | default(false))
+         or (scanner_lynis_disabled_stat.results[idx].stat.exists | default(false))
+         or (scanner_lynis_copied_stat.results[idx].stat.exists | default(false)) %}
+      {{ src }}
+      {% endif %}
+      {% endfor %}

@@ -1,0 +1,9 @@
+---
+argument_specs:
+  main:
+    short_description: Install Lynis and disable distro cron when enabled.
+    options:
+      scanner_lynis_enabled:
+        type: bool
+        required: false
+        default: false

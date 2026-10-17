@@ -1,0 +1,15 @@
+---
+scanner_anacron: true
+scanner_quick_paths:
+  - /tmp
+  - /var/tmp
+  - /root
+  - /usr/local
+  - /etc
+scanner_exclude_paths:
+  - /proc
+  - /sys
+  - /dev
+  - /run
+  - /mnt/array01
+  - /var/lib/docker

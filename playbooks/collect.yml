@@ -1,0 +1,39 @@
+---
+- name: Collect latest scanner reports
+  hosts: all
+  become: true
+  gather_facts: true
+  serial: "{{ scanner_serial | default(1) }}"
+  vars:
+    scanner_collect_dir: "{{ playbook_dir }}/../.cache/reports"
+    scanner_report_directory: /var/log/linux-security
+    scanner_heartbeat_hours: 26
+  tasks:
+    - name: Ensure local collect directory
+      ansible.builtin.file:
+        path: "{{ scanner_collect_dir }}"
+        state: directory
+        mode: "0750"
+      delegate_to: localhost
+      become: false
+      run_once: true
+
+    - name: Stat remote latest.json
+      ansible.builtin.stat:
+        path: "{{ scanner_report_directory }}/latest.json"
+      register: scanner_latest_stat
+
+    - name: Fetch latest.json
+      ansible.builtin.fetch:
+        src: "{{ scanner_report_directory }}/latest.json"
+        dest: "{{ scanner_collect_dir }}/{{ inventory_hostname }}/"
+        flat: true
+      when: scanner_latest_stat.stat.exists | default(false)
+
+    - name: Report missing heartbeat
+      ansible.builtin.debug:
+        msg: >-
+          No {{ scanner_report_directory }}/latest.json on {{ inventory_hostname }}.
+          Controller treats absence older than {{ scanner_heartbeat_hours }}h as failure
+          once scans are scheduled.
+      when: not (scanner_latest_stat.stat.exists | default(false))

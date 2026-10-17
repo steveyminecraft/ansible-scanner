@@ -1,0 +1,18 @@
+---
+- name: AIDE baseline (not in v1)
+  hosts: all
+  become: true
+  gather_facts: false
+  serial: 1
+  vars:
+    scanner_aide_confirm_baseline: false
+  tasks:
+    - name: Require confirm extra-var
+      ansible.builtin.assert:
+        that:
+          - scanner_aide_confirm_baseline | bool
+        fail_msg: Pass -e scanner_aide_confirm_baseline=true (AIDE is still unimplemented in v1)
+
+    - name: AIDE baseline not implemented
+      ansible.builtin.fail:
+        msg: AIDE baseline playbook is a v1 stub. Do not initialise a baseline yet.

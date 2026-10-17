@@ -1,0 +1,13 @@
+---
+- name: Install logrotate
+  ansible.builtin.package:
+    name: logrotate
+    state: present
+
+- name: Install linux-security logrotate
+  ansible.builtin.template:
+    src: logrotate.j2
+    dest: /etc/logrotate.d/linux-security
+    owner: root
+    group: root
+    mode: "0644"

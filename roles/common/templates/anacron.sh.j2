@@ -1,0 +1,9 @@
+#!/bin/sh
+# Managed by ansible-scanner.
+set -eu
+# shellcheck disable=SC1091
+. /etc/linux-security/scanner.conf
+if [ "${SCANNER_SCHEDULE_ENABLED:-0}" != "1" ]; then
+  exit 0
+fi
+exec /usr/local/sbin/security-scan quick

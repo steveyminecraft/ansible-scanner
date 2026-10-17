@@ -1,0 +1,9 @@
+# Developer toolchain. ansible-core 2.17+; prefer 2.21 locally.
+ansible-core>=2.17.0,<2.22
+ansible-lint>=25.0.0
+yamllint>=1.35.0
+molecule>=25.0.0
+molecule-plugins[docker]>=23.5.0
+pytest>=8.0
+jsonschema>=4.0
+PyYAML>=6.0

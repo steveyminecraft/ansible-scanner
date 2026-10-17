@@ -1,0 +1,5 @@
+---
+- name: Refuse AIDE until a later slice
+  ansible.builtin.fail:
+    msg: AIDE is not implemented in v1. Leave scanner_aide_enabled false.
+  when: scanner_aide_enabled | bool

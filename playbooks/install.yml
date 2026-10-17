@@ -1,0 +1,15 @@
+---
+- name: Install linux-security scanner (v1 ClamAV)
+  hosts: all
+  become: true
+  gather_facts: true
+  serial: "{{ scanner_serial | default(1) }}"
+  vars:
+    scanner_repo_root: "{{ playbook_dir }}/.."
+  roles:
+    - role: common
+    - role: clamav
+    - role: report
+    - role: lynis
+    - role: aide
+    - role: rootkit

@@ -1,0 +1,114 @@
+---
+- name: Refuse destructive malware defaults
+  ansible.builtin.assert:
+    that:
+      - not scanner_auto_delete_malware
+      - not scanner_auto_quarantine
+    fail_msg: scanner_auto_delete_malware and scanner_auto_quarantine must stay false
+
+- name: Require Debian-family OS
+  ansible.builtin.assert:
+    that:
+      - ansible_facts['os_family'] in scanner_supported_os_families
+    fail_msg: "Unsupported os_family {{ ansible_facts['os_family'] }}"
+
+- name: Require apt or dnf
+  ansible.builtin.assert:
+    that:
+      - ansible_facts['pkg_mgr'] in ['apt', 'dnf']
+    fail_msg: Only apt or dnf hosts are supported in v1
+
+- name: Merge filesystem-type excludes
+  ansible.builtin.set_fact:
+    scanner_exclude_paths: "{{ (scanner_exclude_paths + scanner_fstype_mounts) | unique }}"
+  vars:
+    scanner_fstype_mounts: >-
+      {{ ansible_facts.get('mounts', [])
+         | selectattr('fstype', 'defined')
+         | selectattr('fstype', 'in', scanner_exclude_fs_types)
+         | map(attribute='mount')
+         | list }}
+
+- name: Create scanner directories
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "{{ '0750' if item == scanner_report_directory else '0755' }}"
+  loop:
+    - "{{ scanner_config_dir }}"
+    - "{{ scanner_report_directory }}"
+    - "{{ scanner_lib_dir }}"
+    - "{{ scanner_lock_dir }}"
+
+- name: Install scan controller
+  ansible.builtin.copy:
+    src: "{{ scanner_scripts_dir }}/security-scan"
+    dest: /usr/local/sbin/security-scan
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Install JSON report helper
+  ansible.builtin.copy:
+    src: "{{ scanner_scripts_dir }}/report.py"
+    dest: "{{ scanner_lib_dir }}/report.py"
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Install full-scan path helper
+  ansible.builtin.copy:
+    src: "{{ scanner_scripts_dir }}/full_paths.py"
+    dest: "{{ scanner_lib_dir }}/full_paths.py"
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Install Lynis report helper
+  ansible.builtin.copy:
+    src: "{{ scanner_scripts_dir }}/lynis_report.py"
+    dest: "{{ scanner_lib_dir }}/lynis_report.py"
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Install report schema
+  ansible.builtin.copy:
+    src: "{{ scanner_schema_src }}"
+    dest: "{{ scanner_lib_dir }}/report-v1.schema.json"
+    owner: root
+    group: root
+    mode: "0644"
+
+- name: Install scanner config
+  ansible.builtin.template:
+    src: scanner.conf.j2
+    dest: "{{ scanner_config_dir }}/scanner.conf"
+    owner: root
+    group: root
+    mode: "0600"
+
+- name: Install cron drop-in
+  ansible.builtin.template:
+    src: cron.d.j2
+    dest: /etc/cron.d/ansible-scanner
+    owner: root
+    group: root
+    mode: "0644"
+
+- name: Install anacron helper
+  ansible.builtin.template:
+    src: anacron.sh.j2
+    dest: /etc/cron.daily/ansible-scanner
+    owner: root
+    group: root
+    mode: "0755"
+  when: scanner_anacron | bool
+
+- name: Remove anacron helper when unused
+  ansible.builtin.file:
+    path: /etc/cron.daily/ansible-scanner
+    state: absent
+  when: not (scanner_anacron | bool)

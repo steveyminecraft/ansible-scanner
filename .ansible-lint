@@ -1,0 +1,23 @@
+---
+use_default_rules: true
+profile: production
+
+exclude_paths:
+  - .venv/
+  - .cache/
+  - .ansible/
+  - .pytest_cache/
+  - collections/
+
+skip_list:
+  # Shared scanner_* namespace across roles is intentional.
+  - var-naming[no-role-prefix]
+
+enable_list:
+  - yaml
+  - role-name
+  - meta
+  - schema
+
+offline: true
+verbosity: 1

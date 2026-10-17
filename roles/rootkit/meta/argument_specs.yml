@@ -1,0 +1,13 @@
+---
+argument_specs:
+  main:
+    short_description: Placeholder; rootkit scanners are not in v1.
+    options:
+      scanner_rkhunter_enabled:
+        type: bool
+        required: false
+        default: false
+      scanner_chkrootkit_enabled:
+        type: bool
+        required: false
+        default: false
