@@ -2,7 +2,7 @@
 galaxy_info:
   role_name: aide
   author: steveyminecraft
-  description: AIDE integrity monitoring (not implemented in v1).
+  description: AIDE package and drop-in excludes. Baseline is confirm-gated.
   license: Apache-2.0
   min_ansible_version: "2.17"
   platforms:

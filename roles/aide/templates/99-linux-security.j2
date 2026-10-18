@@ -1,0 +1,4 @@
+# Managed by ansible-scanner. Extra excludes only. Do not replace vendor aide.conf.
+{% for path in scanner_exclude_paths %}
+!{{ path }}
+{% endfor %}

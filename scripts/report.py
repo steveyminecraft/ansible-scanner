@@ -154,6 +154,12 @@ def _cli(argv: list[str] | None = None) -> int:
     parser.add_argument("--lynis-report", default="")
     parser.add_argument("--lynis-exit", type=int, default=None)
     parser.add_argument("--lynis-version", default="")
+    parser.add_argument("--aide-exit", type=int, default=None)
+    parser.add_argument("--aide-message", default="")
+    parser.add_argument("--aide-changed-path", action="append", default=[])
+    parser.add_argument("--aide-package-owned", action="append", default=[])
+    parser.add_argument("--aide-log", default="")
+    parser.add_argument("--aide-version", default="")
     args = parser.parse_args(argv)
 
     components: dict[str, dict[str, Any]] = {}
@@ -181,6 +187,31 @@ def _cli(argv: list[str] | None = None) -> int:
             report_text,
             exit_code=0 if args.lynis_exit is None else args.lynis_exit,
         )
+    if args.aide_exit is not None:
+        from aide_status import aide_status  # type: ignore[import-not-found]
+
+        changed = list(args.aide_changed_path)
+        owned = list(args.aide_package_owned)
+        if args.aide_log:
+            from aide_paths import classify_aide_log  # type: ignore[import-not-found]
+
+            log_path = Path(args.aide_log)
+            if ".." in log_path.parts:
+                print("aide-log path rejected", file=sys.stderr)
+            elif log_path.is_file():
+                parsed_changed, parsed_owned = classify_aide_log(log_path)
+                changed.extend(parsed_changed)
+                owned.extend(parsed_owned)
+            else:
+                print(f"aide-log missing: {log_path}", file=sys.stderr)
+        changed = list(dict.fromkeys(changed))
+        owned = list(dict.fromkeys(owned))
+        components["aide"] = aide_status(
+            args.aide_exit,
+            changed_paths=changed,
+            package_owned_matching=owned,
+            message=args.aide_message,
+        )
     if not components:
         components["clamav"] = {
             "status": STATUS_NOT_IMPLEMENTED,
@@ -192,6 +223,8 @@ def _cli(argv: list[str] | None = None) -> int:
         versions["clamav"] = args.clamav_version
     if args.lynis_version:
         versions["lynis"] = args.lynis_version
+    if args.aide_version:
+        versions["aide"] = args.aide_version
 
     report = build_report(
         hostname=args.hostname,
@@ -205,7 +238,7 @@ def _cli(argv: list[str] | None = None) -> int:
     out = Path(args.output_dir)
     write_latest_and_ndjson(report, out / "latest.json", out / "scans.ndjson")
     print(json.dumps({"overall_status": report["overall_status"]}, sort_keys=True))
-    return 0 if report["overall_status"] not in {STATUS_ERROR, STATUS_MALWARE} else 1
+    return 0 if report["overall_status"] not in {STATUS_ERROR, STATUS_MALWARE, STATUS_INTEGRITY} else 1
 
 
 if __name__ == "__main__":

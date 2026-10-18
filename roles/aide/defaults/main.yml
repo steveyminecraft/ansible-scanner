@@ -1,3 +1,15 @@
 ---
 scanner_aide_enabled: false
-scanner_aide_confirm_baseline: false
+scanner_config_dir: /etc/linux-security
+scanner_exclude_paths:
+  - /proc
+  - /sys
+  - /dev
+  - /run
+  - /var/lib/docker
+  - /var/lib/containerd
+scanner_aide_cron_paths:
+  - /etc/cron.d/aide
+  - /etc/cron.daily/aide
+scanner_aide_db: /var/lib/aide/aide.db.gz
+scanner_aide_db_new: /var/lib/aide/aide.db.new.gz

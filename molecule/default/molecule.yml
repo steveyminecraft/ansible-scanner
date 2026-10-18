@@ -25,6 +25,7 @@ provisioner:
         scanner_freshclam_enable: false
         scanner_schedule_enabled: false
         scanner_lynis_enabled: true
+        scanner_aide_enabled: true
         scanner_repo_root: ${MOLECULE_PROJECT_DIRECTORY}
   playbooks:
     converge: converge.yml

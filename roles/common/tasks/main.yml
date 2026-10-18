@@ -74,6 +74,22 @@
     group: root
     mode: "0755"
 
+- name: Install AIDE status helper
+  ansible.builtin.copy:
+    src: "{{ scanner_scripts_dir }}/aide_status.py"
+    dest: "{{ scanner_lib_dir }}/aide_status.py"
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Install AIDE path helper
+  ansible.builtin.copy:
+    src: "{{ scanner_scripts_dir }}/aide_paths.py"
+    dest: "{{ scanner_lib_dir }}/aide_paths.py"
+    owner: root
+    group: root
+    mode: "0755"
+
 - name: Install report schema
   ansible.builtin.copy:
     src: "{{ scanner_schema_src }}"

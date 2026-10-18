@@ -27,6 +27,13 @@ def test_full_scan_uses_cross_fs_no_by_default() -> None:
     assert "--cross-fs=no" in text
 
 
+def test_integrity_runs_aide_when_enabled() -> None:
+    text = SCRIPT.read_text(encoding="utf-8")
+    assert "run_aide" in text
+    assert "aide --check" in text
+    assert "integrity|rootkit" not in text or "run_aide" in text
+
+
 def test_audit_runs_lynis_when_enabled() -> None:
     text = SCRIPT.read_text(encoding="utf-8")
     assert "lynis audit system" in text

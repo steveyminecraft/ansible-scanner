@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.4.0
+
+- AIDE install and extra-exclude drop-in. Distro AIDE cron/timer taken over.
+- `security-scan integrity` runs `aide --check` when enabled.
+- Package-owned files matching dpkg checksums are warning, not integrity_violation.
+- Baseline init/update stay confirm-gated (`aide_baseline.yml`, `aide_update.yml`).
+- Install never initialises a baseline. Homelab default remains disabled.
+
 ## 0.3.0
 
 - Lynis via `security-scan audit` when `scanner_lynis_enabled` is true.

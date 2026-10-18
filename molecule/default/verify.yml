@@ -107,3 +107,27 @@
       ansible.builtin.assert:
         that:
           - scanner_lynis_bins.results | selectattr('stat.exists') | list | length > 0
+
+    - name: Stat AIDE binary and drop-in
+      ansible.builtin.stat:
+        path: "{{ item }}"
+      loop:
+        - /usr/bin/aide
+        - /usr/sbin/aide
+        - /etc/aide/aide.conf.d/99-linux-security
+      register: scanner_aide_verify
+
+    - name: Assert AIDE installed with extra excludes drop-in
+      ansible.builtin.assert:
+        that:
+          - scanner_aide_verify.results | selectattr('stat.exists') | list | length >= 2
+
+    - name: Stat AIDE database
+      ansible.builtin.stat:
+        path: /var/lib/aide/aide.db.gz
+      register: scanner_aide_db
+
+    - name: Assert role did not initialise AIDE baseline
+      ansible.builtin.assert:
+        that:
+          - not scanner_aide_db.stat.exists

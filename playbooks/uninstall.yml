@@ -18,6 +18,7 @@
         - /etc/cron.d/ansible-scanner
         - /etc/linux-security/freshclam-takeover
         - /etc/linux-security/lynis-takeover
+        - /etc/linux-security/aide-takeover
         - /etc/linux-security/clamav-runtime
         - /etc/cron.daily/ansible-scanner
         - /usr/local/sbin/security-scan
@@ -27,8 +28,12 @@
 
     - name: Remove reports and AIDE data
       ansible.builtin.file:
-        path: "{{ scanner_report_directory }}"
+        path: "{{ item }}"
         state: absent
+      loop:
+        - "{{ scanner_report_directory }}"
+        - /var/lib/aide/aide.db
+        - /var/lib/aide/aide.db.gz
       when: scanner_destroy_data | bool
 
     - name: Optionally remove ClamAV packages

@@ -1,7 +1,7 @@
 ---
 scanner_anacron: true
 scanner_skip_on_battery: true
-scanner_lynis_enabled: false
+scanner_lynis_enabled: true
 scanner_aide_enabled: false
 scanner_quick_paths:
   - /home
