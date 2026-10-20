@@ -9,6 +9,7 @@
     scanner_schedule_enabled: false
     scanner_lynis_enabled: true
     scanner_aide_enabled: true
+    scanner_rkhunter_enabled: true
   roles:
     - role: common
     - role: clamav

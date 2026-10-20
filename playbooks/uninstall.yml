@@ -19,6 +19,7 @@
         - /etc/linux-security/freshclam-takeover
         - /etc/linux-security/lynis-takeover
         - /etc/linux-security/aide-takeover
+        - /etc/linux-security/rkhunter-takeover
         - /etc/linux-security/clamav-runtime
         - /etc/cron.daily/ansible-scanner
         - /usr/local/sbin/security-scan

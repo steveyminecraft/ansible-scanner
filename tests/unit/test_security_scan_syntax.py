@@ -34,6 +34,13 @@ def test_integrity_runs_aide_when_enabled() -> None:
     assert "integrity|rootkit" not in text or "run_aide" in text
 
 
+def test_rootkit_runs_rkhunter_when_enabled() -> None:
+    text = SCRIPT.read_text(encoding="utf-8")
+    assert "run_rootkit" in text
+    assert "rkhunter --check" in text
+    assert "--propupd" not in text
+
+
 def test_audit_runs_lynis_when_enabled() -> None:
     text = SCRIPT.read_text(encoding="utf-8")
     assert "lynis audit system" in text

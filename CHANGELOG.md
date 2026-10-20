@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.5.0
+
+- rkhunter via `security-scan rootkit` when `scanner_rkhunter_enabled` is true.
+- Exit 1 is `warning`, never malware. Distro rkhunter cron taken over.
+- `--propupd` is confirm-gated (`rkhunter_propupd.yml`). Install never updates properties.
+- chkrootkit stays unimplemented and default off. Homelab default remains disabled.
+
 ## 0.4.0
 
 - AIDE install and extra-exclude drop-in. Distro AIDE cron/timer taken over.

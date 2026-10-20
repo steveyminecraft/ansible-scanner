@@ -131,3 +131,28 @@
       ansible.builtin.assert:
         that:
           - not scanner_aide_db.stat.exists
+
+    - name: Stat rkhunter binary and drop-in
+      ansible.builtin.stat:
+        path: "{{ item }}"
+      loop:
+        - /usr/bin/rkhunter
+        - /usr/sbin/rkhunter
+        - /etc/rkhunter.conf.local
+      register: scanner_rkhunter_verify
+
+    - name: Assert rkhunter installed with local drop-in
+      ansible.builtin.assert:
+        that:
+          - scanner_rkhunter_verify.results | selectattr('stat.exists') | list | length >= 2
+
+    - name: Check controller does not run propupd
+      ansible.builtin.command:
+        argv:
+          - grep
+          - -F
+          - --propupd
+          - /usr/local/sbin/security-scan
+      register: scanner_rkhunter_propupd
+      failed_when: scanner_rkhunter_propupd.rc == 0
+      changed_when: false

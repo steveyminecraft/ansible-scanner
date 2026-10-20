@@ -1,3 +1,7 @@
 ---
 scanner_rkhunter_enabled: false
 scanner_chkrootkit_enabled: false
+scanner_config_dir: /etc/linux-security
+scanner_rkhunter_cron_paths:
+  - /etc/cron.d/rkhunter
+  - /etc/cron.daily/rkhunter

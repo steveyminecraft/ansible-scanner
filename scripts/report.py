@@ -160,6 +160,10 @@ def _cli(argv: list[str] | None = None) -> int:
     parser.add_argument("--aide-package-owned", action="append", default=[])
     parser.add_argument("--aide-log", default="")
     parser.add_argument("--aide-version", default="")
+    parser.add_argument("--rkhunter-exit", type=int, default=None)
+    parser.add_argument("--rkhunter-message", default="")
+    parser.add_argument("--rkhunter-log", default="")
+    parser.add_argument("--rkhunter-version", default="")
     args = parser.parse_args(argv)
 
     components: dict[str, dict[str, Any]] = {}
@@ -212,6 +216,23 @@ def _cli(argv: list[str] | None = None) -> int:
             package_owned_matching=owned,
             message=args.aide_message,
         )
+    if args.rkhunter_exit is not None:
+        from rkhunter_status import rkhunter_status  # type: ignore[import-not-found]
+
+        log_text = ""
+        if args.rkhunter_log:
+            log_path = Path(args.rkhunter_log)
+            if ".." in log_path.parts:
+                print("rkhunter-log path rejected", file=sys.stderr)
+            elif log_path.is_file():
+                log_text = log_path.read_text(encoding="utf-8", errors="replace")
+            else:
+                print(f"rkhunter-log missing: {log_path}", file=sys.stderr)
+        components["rkhunter"] = rkhunter_status(
+            args.rkhunter_exit,
+            message=args.rkhunter_message,
+            log_text=log_text,
+        )
     if not components:
         components["clamav"] = {
             "status": STATUS_NOT_IMPLEMENTED,
@@ -225,6 +246,8 @@ def _cli(argv: list[str] | None = None) -> int:
         versions["lynis"] = args.lynis_version
     if args.aide_version:
         versions["aide"] = args.aide_version
+    if args.rkhunter_version:
+        versions["rkhunter"] = args.rkhunter_version
 
     report = build_report(
         hostname=args.hostname,

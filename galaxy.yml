@@ -1,12 +1,12 @@
 ---
 namespace: steveyminecraft
 name: scanner
-version: 0.4.0
+version: 0.5.0
 readme: README.md
 authors:
   - steveyminecraft
 description: >-
-  Host Linux security scanning (ClamAV on-demand, Lynis, AIDE; later rkhunter)
+  Host Linux security scanning (ClamAV on-demand, Lynis, AIDE, rkhunter)
   for Devuan, Debian, and Ubuntu. No systemd required. No clamd. No auto-delete.
 license:
   - Apache-2.0

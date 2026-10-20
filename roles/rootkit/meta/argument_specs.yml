@@ -1,7 +1,7 @@
 ---
 argument_specs:
   main:
-    short_description: Placeholder; rootkit scanners are not in v1.
+    short_description: Install rkhunter and disable distro cron. Does not run --propupd.
     options:
       scanner_rkhunter_enabled:
         type: bool

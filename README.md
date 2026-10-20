@@ -2,9 +2,9 @@
 
 Ansible collection for host-based Linux security scanning on **Devuan**, **Debian**, and **Ubuntu**.
 
-Installs on-demand **ClamAV (`clamscan`)** with **quick** and **full** profiles, optional **Lynis** (`security-scan audit`), optional **AIDE** (`security-scan integrity`), a `/usr/local/sbin/security-scan` controller, schema-valid JSON reports, and a **disabled** cron file. Distro `freshclam` / Lynis / AIDE cron is taken over. It does not install `clamd`, does not auto-delete detections, does not initialise an AIDE baseline on install, and does not apply hardening.
+Installs on-demand **ClamAV (`clamscan`)** with **quick** and **full** profiles, optional **Lynis** (`security-scan audit`), optional **AIDE** (`security-scan integrity`), optional **rkhunter** (`security-scan rootkit`), a `/usr/local/sbin/security-scan` controller, schema-valid JSON reports, and a **disabled** cron file. Distro `freshclam` / Lynis / AIDE / rkhunter cron is taken over. It does not install `clamd`, does not auto-delete detections, does not initialise an AIDE baseline or run `rkhunter --propupd` on install, and does not apply hardening.
 
-rkhunter, Wazuh, and Falco are **not** in this slice.
+chkrootkit, Wazuh, and Falco are **not** in this slice.
 
 Do not add these roles to `ansible-server-01` `playbooks/restore.yml`.
 
@@ -64,6 +64,7 @@ security-scan quick
 security-scan full
 security-scan audit
 security-scan integrity
+security-scan rootkit
 security-scan status
 ```
 
@@ -72,6 +73,7 @@ AIDE baseline (confirm-gated, serial 1):
 ```bash
 .venv/bin/ansible-playbook -i inventory/homelab/hosts.yml playbooks/aide_baseline.yml --limit prod-01 -e scanner_aide_confirm_baseline=true
 .venv/bin/ansible-playbook -i inventory/homelab/hosts.yml playbooks/aide_update.yml --limit prod-01 -e scanner_aide_confirm_update=true
+.venv/bin/ansible-playbook -i inventory/homelab/hosts.yml playbooks/rkhunter_propupd.yml --limit prod-01 -e scanner_rkhunter_confirm_propupd=true
 ```
 
 Reports: `/var/log/linux-security/latest.json` and `scans.ndjson`.
@@ -95,7 +97,7 @@ Verified this slice:
 - `--check --diff` against prod-01 (`172.16.7.20`) — no apply
 - silver-laptop current DHCP address is `172.16.6.60` (was `172.16.6.208`)
 
-Untested: live Lynis/AIDE apply, enabled cron, rkhunter.
+Untested: live AIDE/rkhunter apply, enabled cron.
 
 ## Spec
 

@@ -38,12 +38,13 @@ load_config() {
   CLAMAV_ENABLED="${SCANNER_CLAMAV_ENABLED:-1}"
   LYNIS_ENABLED="${SCANNER_LYNIS_ENABLED:-0}"
   AIDE_ENABLED="${SCANNER_AIDE_ENABLED:-0}"
+  RKHUNTER_ENABLED="${SCANNER_RKHUNTER_ENABLED:-0}"
   HEAVY_LOCK="${SCANNER_HEAVY_LOCK:-$LOCKDIR/heavy.lock}"
   CONFIG_DIR=$(dirname "$CONFIG")
 }
 
 takeover_args() {
-  for takeover_file in "${CONFIG_DIR}/freshclam-takeover" "${CONFIG_DIR}/lynis-takeover" "${CONFIG_DIR}/aide-takeover"; do
+  for takeover_file in "${CONFIG_DIR}/freshclam-takeover" "${CONFIG_DIR}/lynis-takeover" "${CONFIG_DIR}/aide-takeover" "${CONFIG_DIR}/rkhunter-takeover"; do
     [ -f "$takeover_file" ] || continue
     while IFS= read -r line || [ -n "$line" ]; do
       [ -z "$line" ] && continue
@@ -230,6 +231,42 @@ run_lynis() {
     $(takeover_args)
 }
 
+run_rootkit() {
+  if [ "$RKHUNTER_ENABLED" != "1" ]; then
+    not_implemented rootkit
+    return 0
+  fi
+  if ! command -v rkhunter >/dev/null 2>&1; then
+    python3 "$LIBDIR/report.py" \
+      --hostname "$(hostname)" \
+      --scan-type rootkit \
+      --output-dir "$REPORT_DIR" \
+      --rkhunter-exit 2 \
+      --rkhunter-message "rkhunter binary missing" \
+      --duration-seconds 0
+    return 0
+  fi
+  start=$(date +%s)
+  set +e
+  nice -n "$NICE" ionice -c 2 -n "$IONICE" \
+    rkhunter --check --skip-keypress --nocolors --no-mail-on-warning \
+    >"$REPORT_DIR/rkhunter.log" 2>&1
+  code=$?
+  set -e
+  end=$(date +%s)
+  duration=$((end - start))
+  version="$(rkhunter --version 2>/dev/null | head -n 1 || true)"
+  python3 "$LIBDIR/report.py" \
+    --hostname "$(hostname)" \
+    --scan-type rootkit \
+    --output-dir "$REPORT_DIR" \
+    --rkhunter-exit "$code" \
+    --rkhunter-log "$REPORT_DIR/rkhunter.log" \
+    --rkhunter-version "$version" \
+    --duration-seconds "$duration" \
+    $(takeover_args)
+}
+
 run_aide() {
   if [ "$AIDE_ENABLED" != "1" ]; then
     not_implemented integrity
@@ -336,7 +373,12 @@ main() {
       run_aide
       ;;
     rootkit)
-      not_implemented "$cmd"
+      exec 9>"$LOCKDIR/scan.lock"
+      if ! flock -n 9; then
+        echo "security-scan: another scan holds $LOCKDIR/scan.lock" >&2
+        exit 3
+      fi
+      run_rootkit
       ;;
     status)
       cmd_status
