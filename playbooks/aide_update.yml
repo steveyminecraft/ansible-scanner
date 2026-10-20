@@ -1,0 +1,56 @@
+---
+- name: Update AIDE baseline after approved changes
+  hosts: all
+  become: true
+  gather_facts: true
+  serial: 1
+  vars:
+    scanner_aide_confirm_update: false
+  tasks:
+    - name: Require confirm extra-var
+      ansible.builtin.assert:
+        that:
+          - scanner_aide_confirm_update | bool
+        fail_msg: Pass -e scanner_aide_confirm_update=true
+
+    - name: Require aide binary
+      ansible.builtin.command:
+        argv:
+          - aide
+          - --version
+      changed_when: false
+
+    - name: Rebuild AIDE database
+      ansible.builtin.command:
+        argv:
+          - aide
+          - --init
+      changed_when: true
+
+    - name: Locate rebuilt AIDE database
+      ansible.builtin.find:
+        paths:
+          - /var/lib/aide
+        patterns:
+          - aide.db.new
+          - aide.db.new.gz
+        file_type: file
+      register: scanner_aide_new_files
+
+    - name: Require rebuilt AIDE database
+      ansible.builtin.assert:
+        that:
+          - scanner_aide_new_files.files | length > 0
+        fail_msg: aide --init did not write /var/lib/aide/aide.db.new
+
+    - name: Install updated database as baseline
+      ansible.builtin.copy:
+        src: "{{ scanner_aide_new_src }}"
+        dest: "{{ scanner_aide_new_src | regex_replace('\\.new', '') }}"
+        remote_src: true
+        owner: root
+        group: root
+        mode: "0600"
+      vars:
+        scanner_aide_new_src: "{{ (scanner_aide_new_files.files | sort(attribute='mtime') | last).path }}"
+      when: not ansible_check_mode

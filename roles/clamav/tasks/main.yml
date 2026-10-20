@@ -1,0 +1,147 @@
+---
+- name: Skip ClamAV when disabled
+  ansible.builtin.meta: end_role
+  when: not scanner_clamav_enabled | bool
+
+- name: Refuse automatic malware deletion
+  ansible.builtin.assert:
+    that:
+      - not scanner_auto_delete_malware
+    fail_msg: ClamAV must not auto-delete detections
+
+- name: Ensure EPEL on RedHat-family hosts
+  ansible.builtin.dnf:
+    name: epel-release
+    state: present
+  when: ansible_facts['os_family'] == 'RedHat'
+
+- name: Install on-demand ClamAV packages (Debian family)
+  ansible.builtin.apt:
+    name: "{{ scanner_clamav_packages }}"
+    state: present
+    update_cache: true
+    cache_valid_time: 3600
+  when: ansible_facts['pkg_mgr'] == 'apt'
+
+- name: Install on-demand ClamAV packages (RedHat family)
+  ansible.builtin.dnf:
+    name: "{{ scanner_clamav_packages_redhat }}"
+    state: present
+  when: ansible_facts['os_family'] == 'RedHat'
+
+- name: Ensure takeover directory
+  ansible.builtin.file:
+    path: "{{ scanner_config_dir }}/takeover"
+    state: directory
+    owner: root
+    group: root
+    mode: "0750"
+
+- name: Stat distro freshclam cron jobs
+  ansible.builtin.stat:
+    path: "{{ item }}"
+  loop: "{{ scanner_freshclam_cron_paths }}"
+  register: scanner_freshclam_cron_stat
+
+- name: Disable cron.d freshclam (dot in name so cron ignores it)
+  ansible.builtin.command:
+    argv:
+      - mv
+      - -f
+      - "{{ item.stat.path }}"
+      - "{{ item.stat.path }}.disabled-by-ansible-scanner"
+  changed_when: true
+  loop: "{{ scanner_freshclam_cron_stat.results }}"
+  loop_control:
+    label: "{{ item.stat.path | default(item.item) }}"
+  when:
+    - not ansible_check_mode
+    - item.stat.exists | default(false)
+    - "'/cron.d/' in item.stat.path"
+
+- name: Relocate cron.daily freshclam jobs
+  ansible.builtin.command:
+    argv:
+      - mv
+      - -f
+      - "{{ item.stat.path }}"
+      - "{{ scanner_config_dir }}/takeover/{{ item.stat.path | basename }}"
+  changed_when: true
+  loop: "{{ scanner_freshclam_cron_stat.results }}"
+  loop_control:
+    label: "{{ item.stat.path | default(item.item) }}"
+  when:
+    - not ansible_check_mode
+    - item.stat.exists | default(false)
+    - "'/cron.daily/' in item.stat.path"
+
+- name: Stat disabled cron.d leftovers
+  ansible.builtin.stat:
+    path: "{{ item }}.disabled-by-ansible-scanner"
+  loop: "{{ scanner_freshclam_cron_paths }}"
+  register: scanner_freshclam_disabled_stat
+
+- name: Stat takeover copies
+  ansible.builtin.stat:
+    path: "{{ scanner_config_dir }}/takeover/{{ item | basename }}"
+  loop: "{{ scanner_freshclam_cron_paths }}"
+  register: scanner_freshclam_copied_stat
+
+- name: Record that clamd is not managed and freshclam takeover
+  ansible.builtin.copy:
+    dest: "{{ scanner_config_dir }}/clamav-runtime"
+    owner: root
+    group: root
+    mode: "0644"
+    content: |
+      # Managed by ansible-scanner
+      # Runtime: on-demand clamscan only. Do not start clamd from this role.
+      scanner_freshclam_enable={{ scanner_freshclam_enable | bool | lower }}
+      scanner_freshclam_mode={{ 'daemon' if scanner_freshclam_enable | bool else 'none' }}
+
+- name: Record original distro freshclam paths taken over
+  ansible.builtin.copy:
+    dest: "{{ scanner_config_dir }}/freshclam-takeover"
+    owner: root
+    group: root
+    mode: "0644"
+    content: |
+      # Managed by ansible-scanner. Distro freshclam cron disabled; daemon or none owns updates.
+      {% for src in scanner_freshclam_cron_paths %}
+      {% set idx = loop.index0 %}
+      {% if (scanner_freshclam_cron_stat.results[idx].stat.exists | default(false))
+         or (scanner_freshclam_disabled_stat.results[idx].stat.exists | default(false))
+         or (scanner_freshclam_copied_stat.results[idx].stat.exists | default(false)) %}
+      {{ src }}
+      {% endif %}
+      {% endfor %}
+
+- name: Enable distro freshclam (systemd)
+  ansible.builtin.service:
+    name: clamav-freshclam
+    enabled: true
+    state: started
+  when:
+    - scanner_freshclam_enable | bool
+    - ansible_facts['service_mgr'] == 'systemd'
+    - not ansible_check_mode
+
+- name: Enable distro freshclam (sysvinit / OpenRC)
+  ansible.builtin.service:
+    name: clamav-freshclam
+    enabled: true
+    state: started
+  when:
+    - scanner_freshclam_enable | bool
+    - ansible_facts['service_mgr'] in ['sysvinit', 'openrc']
+    - not ansible_check_mode
+
+- name: Leave freshclam stopped when disabled
+  ansible.builtin.service:
+    name: clamav-freshclam
+    enabled: false
+    state: stopped
+  when:
+    - not (scanner_freshclam_enable | bool)
+    - not ansible_check_mode
+  failed_when: false

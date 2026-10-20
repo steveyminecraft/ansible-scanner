@@ -1,0 +1,440 @@
+#!/bin/sh
+# linux-security scan controller. POSIX sh. JSON is written by report.py.
+set -eu
+
+CONFIG="${SCANNER_CONFIG:-/etc/linux-security/scanner.conf}"
+LIBDIR="${SCANNER_LIBDIR:-/usr/local/lib/linux-security}"
+LOCKDIR="${SCANNER_LOCKDIR:-/run/linux-security}"
+REPORT_DIR_DEFAULT="/var/log/linux-security"
+
+usage() {
+  echo "Usage: security-scan {quick|full|malware|integrity|rootkit|audit|all|status}" >&2
+  exit 2
+}
+
+require_root() {
+  if [ "$(id -u)" -ne 0 ]; then
+    echo "security-scan: must run as root" >&2
+    exit 2
+  fi
+}
+
+load_config() {
+  if [ ! -f "$CONFIG" ]; then
+    echo "security-scan: missing $CONFIG" >&2
+    exit 2
+  fi
+  # shellcheck disable=SC1090
+  . "$CONFIG"
+  REPORT_DIR="${SCANNER_REPORT_DIR:-$REPORT_DIR_DEFAULT}"
+  MIN_RAM_MIB="${SCANNER_MIN_RAM_MIB:-1536}"
+  NICE="${SCANNER_CPU_NICE:-10}"
+  IONICE="${SCANNER_IO_PRIORITY:-7}"
+  QUICK_PATHS="${SCANNER_QUICK_PATHS:-/tmp /var/tmp /home /root /usr/local/bin /opt}"
+  FULL_PATHS="${SCANNER_FULL_PATHS:-}"
+  EXCLUDE_PATHS="${SCANNER_EXCLUDE_PATHS:-/proc /sys /dev /run /var/lib/docker /var/lib/containerd}"
+  EXCLUDE_FS_TYPES="${SCANNER_EXCLUDE_FS_TYPES:-proc sysfs devtmpfs tmpfs overlay squashfs nfs nfs4 cifs zfs}"
+  CROSS_FS="${SCANNER_CROSS_FS:-0}"
+  CLAMAV_ENABLED="${SCANNER_CLAMAV_ENABLED:-1}"
+  LYNIS_ENABLED="${SCANNER_LYNIS_ENABLED:-0}"
+  AIDE_ENABLED="${SCANNER_AIDE_ENABLED:-0}"
+  RKHUNTER_ENABLED="${SCANNER_RKHUNTER_ENABLED:-0}"
+  HEAVY_LOCK="${SCANNER_HEAVY_LOCK:-$LOCKDIR/heavy.lock}"
+  CONFIG_DIR=$(dirname "$CONFIG")
+  export SCANNER_NTFY_URL="${SCANNER_NTFY_URL:-}"
+  export SCANNER_ALERT_ON_DETECTION="${SCANNER_ALERT_ON_DETECTION:-1}"
+  export SCANNER_ALERT_ON_SCAN_FAILURE="${SCANNER_ALERT_ON_SCAN_FAILURE:-1}"
+}
+
+takeover_args() {
+  for takeover_file in "${CONFIG_DIR}/freshclam-takeover" "${CONFIG_DIR}/lynis-takeover" "${CONFIG_DIR}/aide-takeover" "${CONFIG_DIR}/rkhunter-takeover"; do
+    [ -f "$takeover_file" ] || continue
+    while IFS= read -r line || [ -n "$line" ]; do
+      [ -z "$line" ] && continue
+      case "$line" in
+        \#*) continue ;;
+      esac
+      printf '%s\n' "--distro-schedule-disabled"
+      printf '%s\n' "$line"
+    done <"$takeover_file"
+  done
+}
+
+full_scan_paths() {
+  if [ -n "$FULL_PATHS" ]; then
+    printf '%s\n' $FULL_PATHS
+    return 0
+  fi
+  fs_args=""
+  path_args=""
+  for t in $EXCLUDE_FS_TYPES; do
+    fs_args="$fs_args --exclude-fs $t"
+  done
+  for ex in $EXCLUDE_PATHS; do
+    path_args="$path_args --exclude-path $ex"
+  done
+  # shellcheck disable=SC2086
+  python3 "$LIBDIR/full_paths.py" \
+    --mounts-file /proc/self/mounts \
+    --scan-zfs "${SCANNER_SCAN_ZFS:-0}" \
+    --scan-network "${SCANNER_SCAN_NETWORK:-0}" \
+    $fs_args $path_args
+}
+
+available_ram_mib() {
+  awk '/MemAvailable:/ { printf "%d", $2 / 1024; exit }' /proc/meminfo
+}
+
+zfs_busy() {
+  if ! command -v zpool >/dev/null 2>&1; then
+    return 1
+  fi
+  zpool status 2>/dev/null | grep -Eq 'scan: (scrub|resilver) in progress'
+}
+
+on_battery() {
+  if [ "${SCANNER_SKIP_ON_BATTERY:-0}" != "1" ]; then
+    return 1
+  fi
+  if command -v on_ac_power >/dev/null 2>&1; then
+    if on_ac_power; then
+      return 1
+    fi
+    return 0
+  fi
+  return 1
+}
+
+run_clamscan() {
+  scan_type="$1"
+  if [ "$CLAMAV_ENABLED" != "1" ]; then
+    echo "clamav disabled"
+    python3 "$LIBDIR/report.py" \
+      --hostname "$(hostname)" \
+      --scan-type "$scan_type" \
+      --output-dir "$REPORT_DIR" \
+      --clamav-exit 0 \
+      --clamav-message "clamav disabled" \
+      --duration-seconds 0
+    return 0
+  fi
+
+  ram="$(available_ram_mib)"
+  if [ "$ram" -lt "$MIN_RAM_MIB" ]; then
+    python3 "$LIBDIR/report.py" \
+      --hostname "$(hostname)" \
+      --scan-type "$scan_type" \
+      --output-dir "$REPORT_DIR" \
+      --clamav-skip-ram \
+      --clamav-message "MemAvailable ${ram} MiB < ${MIN_RAM_MIB} MiB" \
+      --duration-seconds 0
+    return 0
+  fi
+
+  if zfs_busy; then
+    python3 "$LIBDIR/report.py" \
+      --hostname "$(hostname)" \
+      --scan-type "$scan_type" \
+      --output-dir "$REPORT_DIR" \
+      --clamav-exit 2 \
+      --clamav-message "deferred: zfs scrub or resilver in progress" \
+      --duration-seconds 0
+    return 0
+  fi
+
+  extra=""
+  if [ "$CROSS_FS" != "1" ]; then
+    extra="$extra --cross-fs=no"
+  fi
+  for ex in $EXCLUDE_PATHS; do
+    extra="$extra --exclude-dir=$ex"
+  done
+  if [ "$scan_type" = "full" ]; then
+    extra="$extra --exclude-dir=.zfs --exclude=\\.qcow2$ --exclude=\\.vmdk$ --exclude=\\.vdi$"
+    paths=$(full_scan_paths | tr '\n' ' ')
+    if [ -z "${paths%% }" ]; then
+      python3 "$LIBDIR/report.py" \
+        --hostname "$(hostname)" \
+        --scan-type "$scan_type" \
+        --output-dir "$REPORT_DIR" \
+        --clamav-exit 2 \
+        --clamav-message "full scan: no local filesystems selected" \
+        --duration-seconds 0
+      return 0
+    fi
+  else
+    paths=$QUICK_PATHS
+  fi
+
+  start=$(date +%s)
+  set +e
+  # shellcheck disable=SC2086
+  nice -n "$NICE" ionice -c 2 -n "$IONICE" \
+    clamscan --infected --recursive=yes --stdout $extra $paths >"$REPORT_DIR/clamscan-${scan_type}.log" 2>&1
+  code=$?
+  set -e
+  end=$(date +%s)
+  duration=$((end - start))
+  detections=0
+  if [ "$code" -eq 1 ]; then
+    detections=$(grep -c 'FOUND$' "$REPORT_DIR/clamscan-${scan_type}.log" 2>/dev/null || true)
+  fi
+  version="$(clamscan --version 2>/dev/null || true)"
+  path_args=""
+  for p in $paths; do
+    path_args="$path_args --scanned-path $p"
+  done
+  # shellcheck disable=SC2086
+  python3 "$LIBDIR/report.py" \
+    --hostname "$(hostname)" \
+    --scan-type "$scan_type" \
+    --output-dir "$REPORT_DIR" \
+    --clamav-exit "$code" \
+    --clamav-detections "${detections:-0}" \
+    --duration-seconds "$duration" \
+    --clamav-version "$version" \
+    $path_args \
+    $(takeover_args)
+}
+
+run_lynis() {
+  if [ "$LYNIS_ENABLED" != "1" ]; then
+    not_implemented audit
+    return 0
+  fi
+  if ! command -v lynis >/dev/null 2>&1; then
+    python3 "$LIBDIR/report.py" \
+      --hostname "$(hostname)" \
+      --scan-type audit \
+      --output-dir "$REPORT_DIR" \
+      --lynis-exit 2 \
+      --lynis-report /dev/null \
+      --duration-seconds 0
+    return 0
+  fi
+  start=$(date +%s)
+  set +e
+  nice -n "$NICE" ionice -c 2 -n "$IONICE" \
+    lynis audit system --cronjob --quiet --no-colors \
+    >"$REPORT_DIR/lynis-audit.log" 2>&1
+  code=$?
+  set -e
+  end=$(date +%s)
+  duration=$((end - start))
+  version="$(lynis --version 2>/dev/null | head -n 1 || true)"
+  dat="/var/log/lynis-report.dat"
+  python3 "$LIBDIR/report.py" \
+    --hostname "$(hostname)" \
+    --scan-type audit \
+    --output-dir "$REPORT_DIR" \
+    --lynis-exit "$code" \
+    --lynis-report "$dat" \
+    --lynis-version "$version" \
+    --duration-seconds "$duration" \
+    $(takeover_args)
+}
+
+run_rootkit() {
+  if [ "$RKHUNTER_ENABLED" != "1" ]; then
+    not_implemented rootkit
+    return 0
+  fi
+  if ! command -v rkhunter >/dev/null 2>&1; then
+    python3 "$LIBDIR/report.py" \
+      --hostname "$(hostname)" \
+      --scan-type rootkit \
+      --output-dir "$REPORT_DIR" \
+      --rkhunter-exit 2 \
+      --rkhunter-message "rkhunter binary missing" \
+      --duration-seconds 0
+    return 0
+  fi
+  start=$(date +%s)
+  set +e
+  nice -n "$NICE" ionice -c 2 -n "$IONICE" \
+    rkhunter --check --skip-keypress --nocolors --no-mail-on-warning \
+    >"$REPORT_DIR/rkhunter.log" 2>&1
+  code=$?
+  set -e
+  end=$(date +%s)
+  duration=$((end - start))
+  version="$(rkhunter --version 2>/dev/null | head -n 1 || true)"
+  python3 "$LIBDIR/report.py" \
+    --hostname "$(hostname)" \
+    --scan-type rootkit \
+    --output-dir "$REPORT_DIR" \
+    --rkhunter-exit "$code" \
+    --rkhunter-log "$REPORT_DIR/rkhunter.log" \
+    --rkhunter-version "$version" \
+    --duration-seconds "$duration" \
+    $(takeover_args)
+}
+
+run_aide() {
+  if [ "$AIDE_ENABLED" != "1" ]; then
+    not_implemented integrity
+    return 0
+  fi
+  if ! command -v aide >/dev/null 2>&1; then
+    python3 "$LIBDIR/report.py" \
+      --hostname "$(hostname)" \
+      --scan-type integrity \
+      --output-dir "$REPORT_DIR" \
+      --aide-exit 14 \
+      --aide-message "aide binary missing" \
+      --duration-seconds 0
+    return 0
+  fi
+  if [ ! -f /var/lib/aide/aide.db ] && [ ! -f /var/lib/aide/aide.db.gz ]; then
+    python3 "$LIBDIR/report.py" \
+      --hostname "$(hostname)" \
+      --scan-type integrity \
+      --output-dir "$REPORT_DIR" \
+      --aide-exit 14 \
+      --aide-message "aide baseline not initialised" \
+      --duration-seconds 0 \
+      $(takeover_args)
+    return 0
+  fi
+  start=$(date +%s)
+  set +e
+  nice -n "$NICE" ionice -c 2 -n "$IONICE" \
+    aide --check >"$REPORT_DIR/aide-check.log" 2>&1
+  code=$?
+  set -e
+  end=$(date +%s)
+  duration=$((end - start))
+  version="$(aide --version 2>/dev/null | head -n 1 || true)"
+  python3 "$LIBDIR/report.py" \
+    --hostname "$(hostname)" \
+    --scan-type integrity \
+    --output-dir "$REPORT_DIR" \
+    --aide-exit "$code" \
+    --aide-log "$REPORT_DIR/aide-check.log" \
+    --aide-version "$version" \
+    --duration-seconds "$duration" \
+    $(takeover_args)
+}
+
+run_all() {
+  orig="$REPORT_DIR"
+  parts="$orig/partials"
+  rm -rf "$parts"
+  mkdir -p "$parts"
+  SCANNER_NTFY_SKIP=1
+  export SCANNER_NTFY_SKIP
+  if [ "$CLAMAV_ENABLED" = "1" ]; then
+    REPORT_DIR="$parts/clamav"
+    mkdir -p "$REPORT_DIR"
+    run_clamscan quick || true
+  fi
+  if [ "$LYNIS_ENABLED" = "1" ]; then
+    REPORT_DIR="$parts/lynis"
+    mkdir -p "$REPORT_DIR"
+    run_lynis || true
+  fi
+  if [ "$AIDE_ENABLED" = "1" ]; then
+    REPORT_DIR="$parts/aide"
+    mkdir -p "$REPORT_DIR"
+    run_aide || true
+  fi
+  if [ "$RKHUNTER_ENABLED" = "1" ]; then
+    REPORT_DIR="$parts/rkhunter"
+    mkdir -p "$REPORT_DIR"
+    run_rootkit || true
+  fi
+  REPORT_DIR="$orig"
+  unset SCANNER_NTFY_SKIP
+  python3 "$LIBDIR/merge_reports.py" \
+    --hostname "$(hostname)" \
+    --partials-dir "$parts" \
+    --output-dir "$REPORT_DIR"
+}
+
+cmd_status() {
+  if [ -f "$REPORT_DIR/latest.json" ]; then
+    python3 -m json.tool "$REPORT_DIR/latest.json"
+  else
+    echo "no latest.json in $REPORT_DIR"
+    return 1
+  fi
+}
+
+not_implemented() {
+  scan_type="$1"
+  python3 "$LIBDIR/report.py" \
+    --hostname "$(hostname)" \
+    --scan-type "$scan_type" \
+    --output-dir "$REPORT_DIR" \
+    --clamav-exit 0 \
+    --clamav-message "component not implemented in v1" \
+    --duration-seconds 0
+}
+
+main() {
+  [ "${1:-}" = "" ] && usage
+  cmd="$1"
+  require_root
+  load_config
+  mkdir -p "$REPORT_DIR" "$LOCKDIR"
+
+  if on_battery; then
+    echo "security-scan: skipped on battery" >&2
+    exit 0
+  fi
+
+  case "$cmd" in
+    quick|malware|full)
+      exec 9>"$LOCKDIR/scan.lock"
+      if ! flock -n 9; then
+        echo "security-scan: another scan holds $LOCKDIR/scan.lock" >&2
+        exit 3
+      fi
+      exec 8>"$HEAVY_LOCK"
+      flock -n 8 || true
+      run_clamscan "$cmd"
+      ;;
+    audit)
+      exec 9>"$LOCKDIR/scan.lock"
+      if ! flock -n 9; then
+        echo "security-scan: another scan holds $LOCKDIR/scan.lock" >&2
+        exit 3
+      fi
+      run_lynis
+      ;;
+    integrity)
+      exec 9>"$LOCKDIR/scan.lock"
+      if ! flock -n 9; then
+        echo "security-scan: another scan holds $LOCKDIR/scan.lock" >&2
+        exit 3
+      fi
+      run_aide
+      ;;
+    rootkit)
+      exec 9>"$LOCKDIR/scan.lock"
+      if ! flock -n 9; then
+        echo "security-scan: another scan holds $LOCKDIR/scan.lock" >&2
+        exit 3
+      fi
+      run_rootkit
+      ;;
+    all)
+      exec 9>"$LOCKDIR/scan.lock"
+      if ! flock -n 9; then
+        echo "security-scan: another scan holds $LOCKDIR/scan.lock" >&2
+        exit 3
+      fi
+      exec 8>"$HEAVY_LOCK"
+      flock -n 8 || true
+      run_all
+      ;;
+    status)
+      cmd_status
+      ;;
+    *)
+      usage
+      ;;
+  esac
+}
+
+main "$@"

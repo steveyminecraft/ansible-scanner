@@ -1,0 +1,17 @@
+---
+scanner_min_ram_mib: 768
+scanner_quick_paths:
+  - /tmp
+  - /var/tmp
+  - /root
+  - /usr/local
+scanner_exclude_paths:
+  - /proc
+  - /sys
+  - /dev
+  - /run
+  - /var/lib/docker
+  - /var/lib/containerd
+  - /etc/pihole
+  - /var/log/pihole
+scanner_cron_quick_schedule: "20 3 * * 0"

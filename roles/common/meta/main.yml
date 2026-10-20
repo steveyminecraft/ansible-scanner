@@ -1,0 +1,15 @@
+---
+galaxy_info:
+  role_name: common
+  author: steveyminecraft
+  description: Shared linux-security directories, config, controller script, and cron.
+  license: Apache-2.0
+  min_ansible_version: "2.17"
+  platforms:
+    - name: Debian
+      versions: ["all"]
+    - name: Ubuntu
+      versions: ["all"]
+  galaxy_tags:
+    - security
+dependencies: []

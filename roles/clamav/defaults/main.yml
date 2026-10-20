@@ -1,0 +1,16 @@
+---
+scanner_clamav_enabled: true
+scanner_freshclam_enable: true
+scanner_auto_delete_malware: false
+scanner_config_dir: /etc/linux-security
+scanner_freshclam_cron_paths:
+  - /etc/cron.d/clamav-freshclam
+  - /etc/cron.daily/clamav-freshclam
+  - /etc/cron.daily/freshclam
+  - /etc/cron.daily/clamav
+scanner_clamav_packages:
+  - clamav
+  - clamav-freshclam
+scanner_clamav_packages_redhat:
+  - clamav
+  - clamav-update

@@ -1,0 +1,103 @@
+---
+- name: Refuse chkrootkit until a later slice
+  ansible.builtin.fail:
+    msg: chkrootkit remains default-off and is not implemented in this slice.
+  when: scanner_chkrootkit_enabled | bool
+
+- name: Skip rkhunter when disabled
+  ansible.builtin.meta: end_role
+  when: not scanner_rkhunter_enabled | bool
+
+- name: Install rkhunter (Debian family)
+  ansible.builtin.apt:
+    name: rkhunter
+    state: present
+    update_cache: true
+    cache_valid_time: 3600
+  when: ansible_facts['pkg_mgr'] == 'apt'
+
+- name: Install rkhunter (RedHat family)
+  ansible.builtin.dnf:
+    name: rkhunter
+    state: present
+  when: ansible_facts['os_family'] == 'RedHat'
+
+- name: Install extra local rkhunter policy
+  ansible.builtin.template:
+    src: rkhunter.conf.local.j2
+    dest: /etc/rkhunter.conf.local
+    owner: root
+    group: root
+    mode: "0644"
+
+- name: Stat Debian rkhunter defaults
+  ansible.builtin.stat:
+    path: /etc/default/rkhunter
+  register: scanner_rkhunter_default
+
+- name: Disable distro rkhunter daily cron via defaults
+  ansible.builtin.lineinfile:
+    path: /etc/default/rkhunter
+    regexp: "{{ item.regexp }}"
+    line: "{{ item.line }}"
+    create: false
+  loop:
+    - { regexp: '^CRON_DAILY_RUN=', line: 'CRON_DAILY_RUN="false"' }
+    - { regexp: '^CRON_DB_UPDATE=', line: 'CRON_DB_UPDATE="false"' }
+  when: scanner_rkhunter_default.stat.exists | default(false)
+
+- name: Ensure takeover directory
+  ansible.builtin.file:
+    path: "{{ scanner_config_dir }}/takeover"
+    state: directory
+    owner: root
+    group: root
+    mode: "0750"
+
+- name: Stat distro rkhunter cron jobs
+  ansible.builtin.stat:
+    path: "{{ item }}"
+  loop: "{{ scanner_rkhunter_cron_paths }}"
+  register: scanner_rkhunter_cron_stat
+
+- name: Disable cron.d rkhunter
+  ansible.builtin.command:
+    argv:
+      - mv
+      - -f
+      - "{{ item.stat.path }}"
+      - "{{ item.stat.path }}.disabled-by-ansible-scanner"
+  changed_when: true
+  loop: "{{ scanner_rkhunter_cron_stat.results }}"
+  loop_control:
+    label: "{{ item.stat.path | default(item.item) }}"
+  when:
+    - not ansible_check_mode
+    - item.stat.exists | default(false)
+    - "'/cron.d/' in item.stat.path"
+
+- name: Relocate cron.daily rkhunter jobs
+  ansible.builtin.command:
+    argv:
+      - mv
+      - -f
+      - "{{ item.stat.path }}"
+      - "{{ scanner_config_dir }}/takeover/{{ item.stat.path | basename }}"
+  changed_when: true
+  loop: "{{ scanner_rkhunter_cron_stat.results }}"
+  loop_control:
+    label: "{{ item.stat.path | default(item.item) }}"
+  when:
+    - not ansible_check_mode
+    - item.stat.exists | default(false)
+    - "'/cron.daily/' in item.stat.path"
+
+- name: Record rkhunter takeover
+  ansible.builtin.copy:
+    dest: "{{ scanner_config_dir }}/rkhunter-takeover"
+    owner: root
+    group: root
+    mode: "0644"
+    content: |
+      # Managed by ansible-scanner. Distro rkhunter cron disabled. Property updates are confirm-gated.
+      rkhunter

@@ -1,0 +1,67 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://steveyminecraft.local/schemas/linux-security-report-v1.json",
+  "title": "linux-security scan report",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "hostname",
+    "timestamp",
+    "scan_type",
+    "overall_status",
+    "components"
+  ],
+  "additionalProperties": true,
+  "properties": {
+    "schema_version": { "type": "string", "const": "1.0" },
+    "hostname": { "type": "string", "minLength": 1 },
+    "timestamp": { "type": "string", "minLength": 1 },
+    "scan_type": {
+      "type": "string",
+      "enum": ["quick", "full", "malware", "integrity", "rootkit", "audit", "status", "all"]
+    },
+    "overall_status": {
+      "type": "string",
+      "enum": [
+        "clean",
+        "skipped_insufficient_memory",
+        "not_implemented",
+        "warning",
+        "integrity_violation",
+        "malware_detected",
+        "error"
+      ]
+    },
+    "duration_seconds": { "type": "number", "minimum": 0 },
+    "tool_versions": { "type": "object" },
+    "scanned_paths": { "type": "array", "items": { "type": "string" } },
+    "distro_schedule_disabled": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "components": {
+      "type": "object",
+      "properties": {
+        "clamav": { "$ref": "#/$defs/component" },
+        "aide": { "$ref": "#/$defs/component" },
+        "lynis": { "$ref": "#/$defs/component" },
+        "rkhunter": { "$ref": "#/$defs/component" }
+      },
+      "additionalProperties": { "$ref": "#/$defs/component" }
+    }
+  },
+  "$defs": {
+    "component": {
+      "type": "object",
+      "required": ["status"],
+      "properties": {
+        "status": { "type": "string" },
+        "exit_code": { "type": ["integer", "null"] },
+        "detections": { "type": "integer", "minimum": 0 },
+        "warnings": { "type": "integer", "minimum": 0 },
+        "message": { "type": "string" },
+        "scanned_paths": { "type": "array", "items": { "type": "string" } }
+      }
+    }
+  }
+}

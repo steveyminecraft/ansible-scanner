@@ -1,0 +1,25 @@
+---
+argument_specs:
+  main:
+    short_description: Install on-demand ClamAV without clamd.
+    options:
+      scanner_clamav_enabled:
+        type: bool
+        required: false
+        default: true
+      scanner_freshclam_enable:
+        type: bool
+        required: false
+        default: true
+      scanner_auto_delete_malware:
+        type: bool
+        required: false
+        default: false
+      scanner_clamav_packages:
+        type: list
+        elements: str
+        required: false
+      scanner_clamav_packages_redhat:
+        type: list
+        elements: str
+        required: false

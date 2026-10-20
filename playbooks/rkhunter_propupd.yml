@@ -1,0 +1,28 @@
+---
+- name: Update rkhunter file properties after approved changes
+  hosts: all
+  become: true
+  gather_facts: true
+  serial: 1
+  vars:
+    scanner_rkhunter_confirm_propupd: false
+  tasks:
+    - name: Require confirm extra-var
+      ansible.builtin.assert:
+        that:
+          - scanner_rkhunter_confirm_propupd | bool
+        fail_msg: Pass -e scanner_rkhunter_confirm_propupd=true
+
+    - name: Require rkhunter binary
+      ansible.builtin.command:
+        argv:
+          - rkhunter
+          - --version
+      changed_when: false
+
+    - name: Update rkhunter property database
+      ansible.builtin.command:
+        argv:
+          - rkhunter
+          - --propupd
+      changed_when: true

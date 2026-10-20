@@ -1,0 +1,158 @@
+---
+- name: Verify linux-security v1
+  hosts: all
+  become: true
+  gather_facts: true
+  tasks:
+    - name: Controller is executable
+      ansible.builtin.stat:
+        path: /usr/local/sbin/security-scan
+      register: scanner_bin
+
+    - name: Assert controller mode
+      ansible.builtin.assert:
+        that:
+          - scanner_bin.stat.exists
+          - scanner_bin.stat.executable
+
+    - name: Cron exists and is disabled
+      ansible.builtin.command:
+        cmd: grep scanner_schedule_enabled /etc/cron.d/ansible-scanner
+      register: scanner_cron
+      changed_when: false
+
+    - name: Assert cron comment
+      ansible.builtin.assert:
+        that:
+          - "'false' in scanner_cron.stdout"
+
+    - name: Check clamav-daemon is not installed
+      ansible.builtin.command:
+        argv:
+          - dpkg-query
+          - -W
+          - clamav-daemon
+      register: scanner_clamd
+      failed_when: false
+      changed_when: false
+
+    - name: Assert clamd not installed by this role
+      ansible.builtin.assert:
+        that:
+          - scanner_clamd.rc != 0
+
+    - name: Config is root-only
+      ansible.builtin.stat:
+        path: /etc/linux-security/scanner.conf
+      register: scanner_conf
+
+    - name: Assert config mode
+      ansible.builtin.assert:
+        that:
+          - scanner_conf.stat.mode == '0600'
+
+    - name: Full path helper is installed
+      ansible.builtin.stat:
+        path: /usr/local/lib/linux-security/full_paths.py
+      register: scanner_full_paths_helper
+
+    - name: Assert full path helper
+      ansible.builtin.assert:
+        that:
+          - scanner_full_paths_helper.stat.exists
+          - scanner_full_paths_helper.stat.executable
+
+    - name: Freshclam takeover record exists
+      ansible.builtin.command:
+        cmd: grep scanner_freshclam_mode /etc/linux-security/clamav-runtime
+      register: scanner_freshclam_mode
+      changed_when: false
+
+    - name: Assert freshclam mode recorded
+      ansible.builtin.assert:
+        that:
+          - "'none' in scanner_freshclam_mode.stdout or 'daemon' in scanner_freshclam_mode.stdout"
+
+    - name: Controller implements full
+      ansible.builtin.command:
+        cmd: grep -F 'quick|malware|full' /usr/local/sbin/security-scan
+      register: scanner_full_verb
+      changed_when: false
+
+    - name: Assert full verb
+      ansible.builtin.assert:
+        that:
+          - scanner_full_verb.rc == 0
+
+    - name: Full scan uses cross-fs=no
+      ansible.builtin.command:
+        cmd: grep -- --cross-fs=no /usr/local/sbin/security-scan
+      register: scanner_cross_fs
+      changed_when: false
+
+    - name: Assert cross-fs flag
+      ansible.builtin.assert:
+        that:
+          - scanner_cross_fs.rc == 0
+
+    - name: Lynis binary exists
+      ansible.builtin.stat:
+        path: "{{ item }}"
+      loop:
+        - /usr/sbin/lynis
+        - /usr/bin/lynis
+      register: scanner_lynis_bins
+
+    - name: Assert Lynis present
+      ansible.builtin.assert:
+        that:
+          - scanner_lynis_bins.results | selectattr('stat.exists') | list | length > 0
+
+    - name: Stat AIDE binary and drop-in
+      ansible.builtin.stat:
+        path: "{{ item }}"
+      loop:
+        - /usr/bin/aide
+        - /usr/sbin/aide
+        - /etc/aide/aide.conf.d/99-linux-security
+      register: scanner_aide_verify
+
+    - name: Assert AIDE installed with extra excludes drop-in
+      ansible.builtin.assert:
+        that:
+          - scanner_aide_verify.results | selectattr('stat.exists') | list | length >= 2
+
+    - name: Stat AIDE database
+      ansible.builtin.stat:
+        path: /var/lib/aide/aide.db.gz
+      register: scanner_aide_db
+
+    - name: Assert role did not initialise AIDE baseline
+      ansible.builtin.assert:
+        that:
+          - not scanner_aide_db.stat.exists
+
+    - name: Stat rkhunter binary and drop-in
+      ansible.builtin.stat:
+        path: "{{ item }}"
+      loop:
+        - /usr/bin/rkhunter
+        - /usr/sbin/rkhunter
+        - /etc/rkhunter.conf.local
+      register: scanner_rkhunter_verify
+
+    - name: Assert rkhunter installed with local drop-in
+      ansible.builtin.assert:
+        that:
+          - scanner_rkhunter_verify.results | selectattr('stat.exists') | list | length >= 2
+
+    - name: Check controller does not run propupd
+      ansible.builtin.command:
+        argv:
+          - grep
+          - -F
+          - --propupd
+          - /usr/local/sbin/security-scan
+      register: scanner_rkhunter_propupd
+      failed_when: scanner_rkhunter_propupd.rc == 0
+      changed_when: false

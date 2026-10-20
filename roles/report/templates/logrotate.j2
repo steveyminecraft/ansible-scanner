@@ -1,0 +1,11 @@
+{{ scanner_report_directory }}/*.log
+{{ scanner_report_directory }}/scans.ndjson
+{
+    weekly
+    rotate {{ (scanner_report_retention_days | int / 7) | round(0, 'ceil') | int }}
+    missingok
+    notifempty
+    compress
+    delaycompress
+    copytruncate
+}

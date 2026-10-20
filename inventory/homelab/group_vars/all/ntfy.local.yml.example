@@ -1,0 +1,3 @@
+---
+# Copy to ntfy.local.yml (gitignored). Do not commit the real topic.
+scanner_ntfy_url: "https://ntfy.sh/CHANGE_ME"

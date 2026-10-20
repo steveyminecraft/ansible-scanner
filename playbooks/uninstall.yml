@@ -1,0 +1,46 @@
+---
+- name: Uninstall linux-security scanner
+  hosts: all
+  become: true
+  gather_facts: false
+  vars:
+    scanner_destroy_data: false
+    scanner_remove_packages: false
+    scanner_report_directory: /var/log/linux-security
+    scanner_config_dir: /etc/linux-security
+    scanner_lib_dir: /usr/local/lib/linux-security
+  tasks:
+    - name: Remove cron and scripts
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: absent
+      loop:
+        - /etc/cron.d/ansible-scanner
+        - /etc/linux-security/freshclam-takeover
+        - /etc/linux-security/lynis-takeover
+        - /etc/linux-security/aide-takeover
+        - /etc/linux-security/rkhunter-takeover
+        - /etc/linux-security/clamav-runtime
+        - /etc/cron.daily/ansible-scanner
+        - /usr/local/sbin/security-scan
+        - "{{ scanner_lib_dir }}"
+        - "{{ scanner_config_dir }}"
+        - /etc/logrotate.d/linux-security
+
+    - name: Remove reports and AIDE data
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: absent
+      loop:
+        - "{{ scanner_report_directory }}"
+        - /var/lib/aide/aide.db
+        - /var/lib/aide/aide.db.gz
+      when: scanner_destroy_data | bool
+
+    - name: Optionally remove ClamAV packages
+      ansible.builtin.apt:
+        name:
+          - clamav
+          - clamav-freshclam
+        state: absent
+      when: scanner_remove_packages | bool

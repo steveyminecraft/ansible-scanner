@@ -1,0 +1,127 @@
+---
+- name: Skip AIDE when disabled
+  ansible.builtin.meta: end_role
+  when: not scanner_aide_enabled | bool
+
+- name: Install AIDE (Debian family)
+  ansible.builtin.apt:
+    name:
+      - aide
+      - aide-common
+    state: present
+    update_cache: true
+    cache_valid_time: 3600
+  when: ansible_facts['pkg_mgr'] == 'apt'
+
+- name: Install AIDE (RedHat family)
+  ansible.builtin.dnf:
+    name: aide
+    state: present
+  when: ansible_facts['os_family'] == 'RedHat'
+
+- name: Select AIDE drop-in directory
+  ansible.builtin.set_fact:
+    scanner_aide_dropin_dir: >-
+      {{
+        '/etc/aide/aide.conf.d'
+        if ansible_facts['os_family'] == 'Debian'
+        else '/etc/aide.conf.d'
+      }}
+
+- name: Ensure AIDE drop-in directory
+  ansible.builtin.file:
+    path: "{{ scanner_aide_dropin_dir }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Install extra excludes drop-in
+  ansible.builtin.template:
+    src: 99-linux-security.j2
+    dest: "{{ scanner_aide_dropin_dir }}/99-linux-security"
+    owner: root
+    group: root
+    mode: "0644"
+
+- name: Stat Ubuntu aide-common defaults
+  ansible.builtin.stat:
+    path: /etc/default/aide
+  register: scanner_aide_default
+  when: ansible_facts['os_family'] == 'Debian'
+
+- name: Disable Ubuntu aide-common daily cron via defaults
+  ansible.builtin.lineinfile:
+    path: /etc/default/aide
+    regexp: '^CRON_DAILY_RUN='
+    line: CRON_DAILY_RUN=no
+    create: false
+  when:
+    - ansible_facts['os_family'] == 'Debian'
+    - scanner_aide_default.stat.exists | default(false)
+
+- name: Disable aide systemd timer if present
+  ansible.builtin.service:
+    name: aide.timer
+    enabled: false
+    state: stopped
+  when:
+    - ansible_facts['service_mgr'] == 'systemd'
+    - not ansible_check_mode
+  failed_when: false
+
+- name: Ensure takeover directory
+  ansible.builtin.file:
+    path: "{{ scanner_config_dir }}/takeover"
+    state: directory
+    owner: root
+    group: root
+    mode: "0750"
+
+- name: Stat distro AIDE cron jobs
+  ansible.builtin.stat:
+    path: "{{ item }}"
+  loop: "{{ scanner_aide_cron_paths }}"
+  register: scanner_aide_cron_stat
+
+- name: Disable cron.d AIDE
+  ansible.builtin.command:
+    argv:
+      - mv
+      - -f
+      - "{{ item.stat.path }}"
+      - "{{ item.stat.path }}.disabled-by-ansible-scanner"
+  changed_when: true
+  loop: "{{ scanner_aide_cron_stat.results }}"
+  loop_control:
+    label: "{{ item.stat.path | default(item.item) }}"
+  when:
+    - not ansible_check_mode
+    - item.stat.exists | default(false)
+    - "'/cron.d/' in item.stat.path"
+
+- name: Relocate cron.daily AIDE jobs
+  ansible.builtin.command:
+    argv:
+      - mv
+      - -f
+      - "{{ item.stat.path }}"
+      - "{{ scanner_config_dir }}/takeover/{{ item.stat.path | basename }}"
+  changed_when: true
+  loop: "{{ scanner_aide_cron_stat.results }}"
+  loop_control:
+    label: "{{ item.stat.path | default(item.item) }}"
+  when:
+    - not ansible_check_mode
+    - item.stat.exists | default(false)
+    - "'/cron.daily/' in item.stat.path"
+
+- name: Record AIDE takeover
+  ansible.builtin.copy:
+    dest: "{{ scanner_config_dir }}/aide-takeover"
+    owner: root
+    group: root
+    mode: "0644"
+    content: |
+      # Managed by ansible-scanner. Distro AIDE cron disabled. Baseline is confirm-gated.
+      aide

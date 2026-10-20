@@ -1,0 +1,9 @@
+---
+argument_specs:
+  main:
+    short_description: Install AIDE and drop-in excludes. Does not initialise a baseline.
+    options:
+      scanner_aide_enabled:
+        type: bool
+        required: false
+        default: false

@@ -1,0 +1,13 @@
+---
+argument_specs:
+  main:
+    short_description: Install rkhunter and disable distro cron. Does not run --propupd.
+    options:
+      scanner_rkhunter_enabled:
+        type: bool
+        required: false
+        default: false
+      scanner_chkrootkit_enabled:
+        type: bool
+        required: false
+        default: false

@@ -1,0 +1,49 @@
+---
+argument_specs:
+  main:
+    short_description: Install linux-security controller, config, and disabled cron.
+    options:
+      scanner_enabled:
+        type: bool
+        required: false
+        default: true
+      scanner_auto_delete_malware:
+        type: bool
+        required: false
+        default: false
+      scanner_auto_quarantine:
+        type: bool
+        required: false
+        default: false
+      scanner_schedule_enabled:
+        type: bool
+        required: false
+        default: false
+      scanner_clamav_enabled:
+        type: bool
+        required: false
+        default: true
+      scanner_min_ram_mib:
+        type: int
+        required: false
+        default: 1536
+      scanner_report_directory:
+        type: str
+        required: false
+        default: /var/log/linux-security
+      scanner_config_dir:
+        type: str
+        required: false
+        default: /etc/linux-security
+      scanner_quick_paths:
+        type: list
+        elements: str
+        required: false
+      scanner_full_paths:
+        type: list
+        elements: str
+        required: false
+      scanner_exclude_paths:
+        type: list
+        elements: str
+        required: false

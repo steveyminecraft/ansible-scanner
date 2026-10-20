@@ -1,0 +1,62 @@
+---
+scanner_enabled: true
+scanner_repo_root: "{{ playbook_dir }}/.."
+scanner_scripts_dir: "{{ scanner_repo_root }}/scripts"
+scanner_schema_src: "{{ scanner_repo_root }}/schemas/report-v1.schema.json"
+scanner_config_dir: /etc/linux-security
+scanner_report_directory: /var/log/linux-security
+scanner_lib_dir: /usr/local/lib/linux-security
+scanner_lock_dir: /run/linux-security
+scanner_schedule_enabled: false
+scanner_scan_cpu_nice: 10
+scanner_scan_io_priority: 7
+scanner_min_ram_mib: 1536
+scanner_clamav_enabled: true
+scanner_lynis_enabled: false
+scanner_aide_enabled: false
+scanner_rkhunter_enabled: false
+scanner_chkrootkit_enabled: false
+scanner_auto_delete_malware: false
+scanner_auto_quarantine: false
+scanner_scan_network_mounts: false
+scanner_scan_zfs_datasets: false
+scanner_cross_fs: false
+scanner_skip_on_battery: false
+scanner_anacron: false
+scanner_cron_quick_schedule: "15 4 * * *"
+scanner_report_retention_days: 90
+scanner_ntfy_url: ""
+scanner_alert_on_detection: true
+scanner_alert_on_scan_failure: true
+scanner_heavy_lock: "{{ scanner_lock_dir }}/heavy.lock"
+scanner_exclude_fs_types:
+  - proc
+  - sysfs
+  - devtmpfs
+  - tmpfs
+  - overlay
+  - squashfs
+  - nfs
+  - nfs4
+  - cifs
+  - zfs
+  - fuse
+scanner_full_paths: []
+scanner_exclude_paths:
+  - /proc
+  - /sys
+  - /dev
+  - /run
+  - /var/lib/docker
+  - /var/lib/containerd
+  - /snap
+scanner_quick_paths:
+  - /tmp
+  - /var/tmp
+  - /home
+  - /root
+  - /usr/local/bin
+  - /opt
+scanner_supported_os_families:
+  - Debian
+  - RedHat

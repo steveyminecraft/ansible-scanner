@@ -1,0 +1,16 @@
+---
+scanner_anacron: true
+scanner_skip_on_battery: true
+scanner_lynis_enabled: true
+scanner_aide_enabled: false
+scanner_quick_paths:
+  - /home
+scanner_exclude_paths:
+  - /proc
+  - /sys
+  - /dev
+  - /run
+  - /var/lib/libvirt/images
+  - /home/*/.cache
+  - /home/*/.venv
+  - /home/*/node_modules
