@@ -18,7 +18,7 @@
     "timestamp": { "type": "string", "minLength": 1 },
     "scan_type": {
       "type": "string",
-      "enum": ["quick", "full", "malware", "integrity", "rootkit", "audit", "status"]
+      "enum": ["quick", "full", "malware", "integrity", "rootkit", "audit", "status", "all"]
     },
     "overall_status": {
       "type": "string",

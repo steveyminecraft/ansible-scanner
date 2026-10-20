@@ -260,6 +260,9 @@ def _cli(argv: list[str] | None = None) -> int:
     )
     out = Path(args.output_dir)
     write_latest_and_ndjson(report, out / "latest.json", out / "scans.ndjson")
+    from ntfy_alert import notify_from_env  # type: ignore[import-not-found]
+
+    notify_from_env(report, out)
     print(json.dumps({"overall_status": report["overall_status"]}, sort_keys=True))
     return 0 if report["overall_status"] not in {STATUS_ERROR, STATUS_MALWARE, STATUS_INTEGRITY} else 1
 

@@ -98,6 +98,22 @@
     group: root
     mode: "0755"
 
+- name: Install ntfy alert helper
+  ansible.builtin.copy:
+    src: "{{ scanner_scripts_dir }}/ntfy_alert.py"
+    dest: "{{ scanner_lib_dir }}/ntfy_alert.py"
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Install report merge helper
+  ansible.builtin.copy:
+    src: "{{ scanner_scripts_dir }}/merge_reports.py"
+    dest: "{{ scanner_lib_dir }}/merge_reports.py"
+    owner: root
+    group: root
+    mode: "0755"
+
 - name: Install report schema
   ansible.builtin.copy:
     src: "{{ scanner_schema_src }}"

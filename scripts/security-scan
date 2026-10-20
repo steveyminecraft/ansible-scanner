@@ -8,7 +8,7 @@ LOCKDIR="${SCANNER_LOCKDIR:-/run/linux-security}"
 REPORT_DIR_DEFAULT="/var/log/linux-security"
 
 usage() {
-  echo "Usage: security-scan {quick|full|malware|integrity|rootkit|audit|status}" >&2
+  echo "Usage: security-scan {quick|full|malware|integrity|rootkit|audit|all|status}" >&2
   exit 2
 }
 
@@ -41,6 +41,9 @@ load_config() {
   RKHUNTER_ENABLED="${SCANNER_RKHUNTER_ENABLED:-0}"
   HEAVY_LOCK="${SCANNER_HEAVY_LOCK:-$LOCKDIR/heavy.lock}"
   CONFIG_DIR=$(dirname "$CONFIG")
+  export SCANNER_NTFY_URL="${SCANNER_NTFY_URL:-}"
+  export SCANNER_ALERT_ON_DETECTION="${SCANNER_ALERT_ON_DETECTION:-1}"
+  export SCANNER_ALERT_ON_SCAN_FAILURE="${SCANNER_ALERT_ON_SCAN_FAILURE:-1}"
 }
 
 takeover_args() {
@@ -313,6 +316,41 @@ run_aide() {
     $(takeover_args)
 }
 
+run_all() {
+  orig="$REPORT_DIR"
+  parts="$orig/partials"
+  rm -rf "$parts"
+  mkdir -p "$parts"
+  SCANNER_NTFY_SKIP=1
+  export SCANNER_NTFY_SKIP
+  if [ "$CLAMAV_ENABLED" = "1" ]; then
+    REPORT_DIR="$parts/clamav"
+    mkdir -p "$REPORT_DIR"
+    run_clamscan quick || true
+  fi
+  if [ "$LYNIS_ENABLED" = "1" ]; then
+    REPORT_DIR="$parts/lynis"
+    mkdir -p "$REPORT_DIR"
+    run_lynis || true
+  fi
+  if [ "$AIDE_ENABLED" = "1" ]; then
+    REPORT_DIR="$parts/aide"
+    mkdir -p "$REPORT_DIR"
+    run_aide || true
+  fi
+  if [ "$RKHUNTER_ENABLED" = "1" ]; then
+    REPORT_DIR="$parts/rkhunter"
+    mkdir -p "$REPORT_DIR"
+    run_rootkit || true
+  fi
+  REPORT_DIR="$orig"
+  unset SCANNER_NTFY_SKIP
+  python3 "$LIBDIR/merge_reports.py" \
+    --hostname "$(hostname)" \
+    --partials-dir "$parts" \
+    --output-dir "$REPORT_DIR"
+}
+
 cmd_status() {
   if [ -f "$REPORT_DIR/latest.json" ]; then
     python3 -m json.tool "$REPORT_DIR/latest.json"
@@ -379,6 +417,16 @@ main() {
         exit 3
       fi
       run_rootkit
+      ;;
+    all)
+      exec 9>"$LOCKDIR/scan.lock"
+      if ! flock -n 9; then
+        echo "security-scan: another scan holds $LOCKDIR/scan.lock" >&2
+        exit 3
+      fi
+      exec 8>"$HEAVY_LOCK"
+      flock -n 8 || true
+      run_all
       ;;
     status)
       cmd_status

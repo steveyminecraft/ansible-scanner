@@ -2,7 +2,7 @@
 
 Ansible collection for host-based Linux security scanning on **Devuan**, **Debian**, and **Ubuntu**.
 
-Installs on-demand **ClamAV (`clamscan`)** with **quick** and **full** profiles, optional **Lynis** (`security-scan audit`), optional **AIDE** (`security-scan integrity`), optional **rkhunter** (`security-scan rootkit`), a `/usr/local/sbin/security-scan` controller, schema-valid JSON reports, and a **disabled** cron file. Distro `freshclam` / Lynis / AIDE / rkhunter cron is taken over. It does not install `clamd`, does not auto-delete detections, does not initialise an AIDE baseline or run `rkhunter --propupd` on install, and does not apply hardening.
+Installs on-demand **ClamAV (`clamscan`)** with **quick** and **full** profiles, optional **Lynis** (`security-scan audit`), optional **AIDE** (`security-scan integrity`), optional **rkhunter** (`security-scan rootkit`), a combined **`security-scan all`**, optional **ntfy** on status change, a `/usr/local/sbin/security-scan` controller, schema-valid JSON reports, and a **disabled** cron file. Distro `freshclam` / Lynis / AIDE / rkhunter cron is taken over. It does not install `clamd`, does not auto-delete detections, does not initialise an AIDE baseline or run `rkhunter --propupd` on install, and does not apply hardening.
 
 chkrootkit, Wazuh, and Falco are **not** in this slice.
 
@@ -35,6 +35,8 @@ python3 -m venv .venv
 
 `scanner_schedule_enabled` defaults to **false**. Do not enable cron until a manual report is reviewed.
 
+Homelab ntfy URL lives in gitignored `inventory/homelab/group_vars/all/ntfy.local.yml` (copy the `.example`). Keep `scanner_ntfy_url` empty in committed vars.
+
 ## Commands
 
 Syntax only:
@@ -65,6 +67,7 @@ security-scan full
 security-scan audit
 security-scan integrity
 security-scan rootkit
+security-scan all
 security-scan status
 ```
 

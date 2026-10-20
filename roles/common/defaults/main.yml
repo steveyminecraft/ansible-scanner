@@ -26,6 +26,8 @@ scanner_anacron: false
 scanner_cron_quick_schedule: "15 4 * * *"
 scanner_report_retention_days: 90
 scanner_ntfy_url: ""
+scanner_alert_on_detection: true
+scanner_alert_on_scan_failure: true
 scanner_heavy_lock: "{{ scanner_lock_dir }}/heavy.lock"
 scanner_exclude_fs_types:
   - proc

@@ -46,3 +46,12 @@ def test_audit_runs_lynis_when_enabled() -> None:
     assert "lynis audit system" in text
     assert "lynis-report.dat" in text
     assert "run_lynis" in text
+
+
+def test_all_continues_when_a_component_fails() -> None:
+    text = SCRIPT.read_text(encoding="utf-8")
+    assert "run_all" in text
+    assert "merge_reports.py" in text
+    assert "run_clamscan quick || true" in text
+    assert "run_lynis || true" in text
+    assert "SCANNER_NTFY_SKIP=1" in text

@@ -19,3 +19,4 @@ keys.txt
 *.pass
 vault-password
 .vault_pass
+inventory/homelab/group_vars/all/*.local.yml

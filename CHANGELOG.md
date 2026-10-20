@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.6.0
+
+- `security-scan all` runs enabled components and continues if one fails.
+- ntfy POST on overall_status change (detection, scan failure, or recovery). Empty URL is a no-op.
+- Alert body is hostname, scan type, status, counts, and report path only.
+
 ## 0.5.0
 
 - rkhunter via `security-scan rootkit` when `scanner_rkhunter_enabled` is true.
