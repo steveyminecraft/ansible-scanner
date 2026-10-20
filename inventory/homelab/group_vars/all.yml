@@ -3,7 +3,7 @@ scanner_enabled: true
 scanner_clamav_enabled: true
 scanner_lynis_enabled: true
 scanner_aide_enabled: false
-scanner_rkhunter_enabled: false
+scanner_rkhunter_enabled: true
 scanner_chkrootkit_enabled: false
 scanner_schedule_enabled: false
 scanner_freshclam_enable: true
