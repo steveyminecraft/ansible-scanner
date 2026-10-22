@@ -35,6 +35,8 @@ python3 -m venv .venv
 
 `scanner_schedule_enabled` defaults to **false**. Do not enable cron until a manual report is reviewed.
 
+When that flag is true, always-on hosts write `scanner_schedule_jobs` into `/etc/cron.d/ansible-scanner`. The default job is ClamAV quick. prod-01 also lists Saturday full, Monday Lynis, and Wednesday rkhunter. AIDE is omitted. Hosts with `scanner_anacron` (silver-laptop, backup-01) keep the clock file empty and use `/etc/cron.daily/ansible-scanner` for quick plus `/etc/cron.weekly/ansible-scanner` for Lynis and rkhunter.
+
 Homelab ntfy URL lives in gitignored `inventory/homelab/group_vars/all/ntfy.local.yml` (copy the `.example`). Keep `scanner_ntfy_url` empty in committed vars.
 
 ## Commands

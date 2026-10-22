@@ -16,3 +16,12 @@ scanner_exclude_paths:
   - /snap
   - /mnt/array01
 scanner_cron_quick_schedule: "30 4 * * *"
+scanner_schedule_jobs:
+  - schedule: "30 4 * * *"
+    command: quick
+  - schedule: "30 5 * * 6"
+    command: full
+  - schedule: "40 4 * * 1"
+    command: audit
+  - schedule: "40 4 * * 3"
+    command: rootkit
