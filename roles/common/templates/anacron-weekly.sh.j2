@@ -1,0 +1,16 @@
+#!/bin/sh
+# Managed by ansible-scanner. Lynis and rkhunter only. AIDE stays unscheduled.
+set -eu
+# shellcheck disable=SC1091
+. /etc/linux-security/scanner.conf
+if [ "${SCANNER_SCHEDULE_ENABLED:-0}" != "1" ]; then
+  exit 0
+fi
+rc=0
+if [ "${SCANNER_LYNIS_ENABLED:-0}" = "1" ]; then
+  /usr/local/sbin/security-scan audit || rc=$?
+fi
+if [ "${SCANNER_RKHUNTER_ENABLED:-0}" = "1" ]; then
+  /usr/local/sbin/security-scan rootkit || rc=$?
+fi
+exit "$rc"

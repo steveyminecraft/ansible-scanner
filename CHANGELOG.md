@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.7.0
+
+- Clock schedules come from `scanner_schedule_jobs` when `scanner_schedule_enabled` is true.
+- Default job is ClamAV quick. prod-01 adds Saturday full, Monday Lynis, and Wednesday rkhunter.
+- AIDE is not scheduled. Anacron hosts use daily quick and weekly Lynis/rkhunter instead of `/etc/cron.d`.
+- Homelab `scanner_schedule_enabled` stays false.
+
 ## 0.6.0
 
 - `security-scan all` runs enabled components and continues if one fails.

@@ -1,9 +1,19 @@
 # Managed by ansible-scanner. Do not edit.
 SHELL=/bin/sh
 PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin
-{% if scanner_schedule_enabled | bool %}
-{{ scanner_cron_quick_schedule }} root /usr/local/sbin/security-scan quick
-{% else %}
+{% if not (scanner_schedule_enabled | bool) %}
 # scanner_schedule_enabled is false — no jobs. Example:
 # {{ scanner_cron_quick_schedule }} root /usr/local/sbin/security-scan quick
+{% elif scanner_anacron | bool %}
+# anacron owns the schedule via /etc/cron.daily and /etc/cron.weekly.
+{% else %}
+{% for job in scanner_schedule_jobs | default([{'schedule': scanner_cron_quick_schedule, 'command': 'quick'}]) %}
+{% if job.command in ['quick', 'full', 'malware'] and scanner_clamav_enabled | bool %}
+{{ job.schedule }} root /usr/local/sbin/security-scan {{ job.command }}
+{% elif job.command == 'audit' and scanner_lynis_enabled | bool %}
+{{ job.schedule }} root /usr/local/sbin/security-scan audit
+{% elif job.command == 'rootkit' and scanner_rkhunter_enabled | bool %}
+{{ job.schedule }} root /usr/local/sbin/security-scan rootkit
+{% endif %}
+{% endfor %}
 {% endif %}
