@@ -1,5 +1,5 @@
 ---
-# Same defaults as homelab/all.yml — schedules stay off.
+# Collection example stays off. Homelab inventory enables weekly Sunday jobs.
 scanner_enabled: true
 scanner_clamav_enabled: true
 scanner_lynis_enabled: false
@@ -24,7 +24,7 @@ scanner_cross_fs: false
 scanner_serial: 1
 scanner_skip_on_battery: false
 scanner_anacron: false
-scanner_cron_quick_schedule: "15 4 * * *"
+scanner_cron_quick_schedule: "15 4 * * 0"
 scanner_exclude_fs_types:
   - proc
   - sysfs

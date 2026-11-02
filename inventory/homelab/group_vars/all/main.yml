@@ -5,7 +5,7 @@ scanner_lynis_enabled: true
 scanner_aide_enabled: false
 scanner_rkhunter_enabled: true
 scanner_chkrootkit_enabled: false
-scanner_schedule_enabled: false
+scanner_schedule_enabled: true
 scanner_freshclam_enable: true
 scanner_min_ram_mib: 1536
 scanner_scan_cpu_nice: 10
@@ -26,7 +26,7 @@ scanner_alert_on_scan_failure: true
 scanner_ntfy_url: ""
 scanner_skip_on_battery: false
 scanner_anacron: false
-scanner_cron_quick_schedule: "15 4 * * *"
+scanner_cron_quick_schedule: "15 4 * * 0"
 scanner_exclude_fs_types:
   - proc
   - sysfs

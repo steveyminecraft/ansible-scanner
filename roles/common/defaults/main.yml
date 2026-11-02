@@ -23,7 +23,7 @@ scanner_scan_zfs_datasets: false
 scanner_cross_fs: false
 scanner_skip_on_battery: false
 scanner_anacron: false
-scanner_cron_quick_schedule: "15 4 * * *"
+scanner_cron_quick_schedule: "15 4 * * 0"
 scanner_report_retention_days: 90
 scanner_ntfy_url: ""
 scanner_alert_on_detection: true

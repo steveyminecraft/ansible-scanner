@@ -2,7 +2,7 @@
 
 Ansible collection for host-based Linux security scanning on **Devuan**, **Debian**, and **Ubuntu**.
 
-Installs on-demand **ClamAV (`clamscan`)** with **quick** and **full** profiles, optional **Lynis** (`security-scan audit`), optional **AIDE** (`security-scan integrity`), optional **rkhunter** (`security-scan rootkit`), a combined **`security-scan all`**, optional **ntfy** on status change, a `/usr/local/sbin/security-scan` controller, schema-valid JSON reports, and a **disabled** cron file. Distro `freshclam` / Lynis / AIDE / rkhunter cron is taken over. It does not install `clamd`, does not auto-delete detections, does not initialise an AIDE baseline or run `rkhunter --propupd` on install, and does not apply hardening.
+Installs on-demand **ClamAV (`clamscan`)** with **quick** and **full** profiles, optional **Lynis** (`security-scan audit`), optional **AIDE** (`security-scan integrity`), optional **rkhunter** (`security-scan rootkit`), a combined **`security-scan all`**, optional **ntfy** on status change, a `/usr/local/sbin/security-scan` controller, schema-valid JSON reports, and a cron file that is **disabled** unless inventory opts in. Distro `freshclam` / Lynis / AIDE / rkhunter cron is taken over. It does not install `clamd`, does not auto-delete detections, does not initialise an AIDE baseline or run `rkhunter --propupd` on install, and does not apply hardening.
 
 chkrootkit, Wazuh, and Falco are **not** in this slice.
 
@@ -33,9 +33,9 @@ python3 -m venv .venv
   - backup-01 `172.16.7.11` (`richardl`)
   - silver-laptop `172.16.6.60` (`talon`, Devuan)
 
-`scanner_schedule_enabled` defaults to **false**. Do not enable cron until a manual report is reviewed.
+Collection `scanner_schedule_enabled` still defaults to **false**. Homelab inventory sets it **true** and runs jobs **once a week** (Sunday). Full ClamAV stays on-demand.
 
-When that flag is true, always-on hosts write `scanner_schedule_jobs` into `/etc/cron.d/ansible-scanner`. The default job is ClamAV quick. prod-01 also lists Saturday full, Monday Lynis, and Wednesday rkhunter. AIDE is omitted. Hosts with `scanner_anacron` (silver-laptop, backup-01) keep the clock file empty and use `/etc/cron.daily/ansible-scanner` for quick plus `/etc/cron.weekly/ansible-scanner` for Lynis and rkhunter.
+When that flag is true, always-on hosts write `scanner_schedule_jobs` into `/etc/cron.d/ansible-scanner`. The default job is Sunday ClamAV quick. prod-01 also runs Sunday Lynis and rkhunter. AIDE is omitted. Hosts with `scanner_anacron` (silver-laptop, backup-01) keep the clock file empty and use `/etc/cron.weekly/ansible-scanner` for quick, Lynis, and rkhunter.
 
 Homelab ntfy URL lives in gitignored `inventory/homelab/group_vars/all/ntfy.local.yml` (copy the `.example`). Keep `scanner_ntfy_url` empty in committed vars.
 

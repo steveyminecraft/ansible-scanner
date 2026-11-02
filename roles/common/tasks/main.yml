@@ -138,25 +138,22 @@
     group: root
     mode: "0644"
 
-- name: Install anacron helpers
+- name: Install anacron weekly helper
   ansible.builtin.template:
-    src: "{{ item.src }}"
-    dest: "{{ item.dest }}"
+    src: anacron-weekly.sh.j2
+    dest: /etc/cron.weekly/ansible-scanner
     owner: root
     group: root
     mode: "0755"
-  loop:
-    - src: anacron.sh.j2
-      dest: /etc/cron.daily/ansible-scanner
-    - src: anacron-weekly.sh.j2
-      dest: /etc/cron.weekly/ansible-scanner
   when: scanner_anacron | bool
 
-- name: Remove anacron helpers when unused
+- name: Remove leftover anacron daily helper
   ansible.builtin.file:
-    path: "{{ item }}"
+    path: /etc/cron.daily/ansible-scanner
     state: absent
-  loop:
-    - /etc/cron.daily/ansible-scanner
-    - /etc/cron.weekly/ansible-scanner
+
+- name: Remove anacron weekly helper when unused
+  ansible.builtin.file:
+    path: /etc/cron.weekly/ansible-scanner
+    state: absent
   when: not (scanner_anacron | bool)
