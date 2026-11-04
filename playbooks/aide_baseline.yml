@@ -20,11 +20,20 @@
           - --version
       changed_when: false
 
+    - name: Stat AIDE config
+      ansible.builtin.stat:
+        path: "{{ item }}"
+      loop:
+        - /etc/aide/aide.conf
+        - /etc/aide.conf
+      register: scanner_aide_conf_stat
+
     - name: Initialise AIDE database
       ansible.builtin.command:
-        argv:
-          - aide
-          - --init
+        argv: "{{ ['aide'] + scanner_aide_config_args + ['--init'] }}"
+      vars:
+        scanner_aide_config: "{{ (scanner_aide_conf_stat.results | selectattr('stat.exists') | map(attribute='item') | list | first) | default('') }}"
+        scanner_aide_config_args: "{{ ['--config', scanner_aide_config] if scanner_aide_config else [] }}"
       changed_when: true
 
     - name: Locate new AIDE database
