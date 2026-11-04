@@ -1,0 +1,16 @@
+#!/bin/sh
+# Managed by ansible-scanner. Monthly ClamAV full and AIDE. Weekly jobs stay in cron.weekly.
+set -eu
+# shellcheck disable=SC1091
+. /etc/linux-security/scanner.conf
+if [ "${SCANNER_SCHEDULE_ENABLED:-0}" != "1" ]; then
+  exit 0
+fi
+rc=0
+if [ "${SCANNER_CLAMAV_ENABLED:-0}" = "1" ]; then
+  /usr/local/sbin/security-scan full || rc=$?
+fi
+if [ "${SCANNER_AIDE_ENABLED:-0}" = "1" ]; then
+  /usr/local/sbin/security-scan integrity || rc=$?
+fi
+exit "$rc"

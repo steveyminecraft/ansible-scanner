@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.9.0
+
+- Homelab monthly deeper scan: first Saturday ClamAV `full` and AIDE `integrity` on always-on hosts.
+- Anacron hosts use `/etc/cron.monthly/ansible-scanner` for the same pair.
+- Weekly Sunday ClamAV quick (plus prod-01 Lynis/rkhunter) is unchanged.
+- Collection `scanner_schedule_monthly_jobs` default stays empty. Homelab enables AIDE.
+
 ## 0.8.0
 
 - Homelab `scanner_schedule_enabled` is true. Jobs run once a week (Sunday).

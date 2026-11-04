@@ -147,6 +147,15 @@
     mode: "0755"
   when: scanner_anacron | bool
 
+- name: Install anacron monthly helper
+  ansible.builtin.template:
+    src: anacron-monthly.sh.j2
+    dest: /etc/cron.monthly/ansible-scanner
+    owner: root
+    group: root
+    mode: "0755"
+  when: scanner_anacron | bool
+
 - name: Remove leftover anacron daily helper
   ansible.builtin.file:
     path: /etc/cron.daily/ansible-scanner
@@ -155,5 +164,11 @@
 - name: Remove anacron weekly helper when unused
   ansible.builtin.file:
     path: /etc/cron.weekly/ansible-scanner
+    state: absent
+  when: not (scanner_anacron | bool)
+
+- name: Remove anacron monthly helper when unused
+  ansible.builtin.file:
+    path: /etc/cron.monthly/ansible-scanner
     state: absent
   when: not (scanner_anacron | bool)

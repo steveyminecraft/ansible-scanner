@@ -1,4 +1,4 @@
-"""Homelab opts into weekly jobs; collection defaults stay off and skip AIDE."""
+"""Homelab opts into weekly Sunday plus monthly first-Saturday jobs."""
 
 from __future__ import annotations
 
@@ -10,6 +10,7 @@ from jinja2 import Environment
 ROOT = Path(__file__).resolve().parents[2]
 CRON = (ROOT / "roles/common/templates/cron.d.j2").read_text(encoding="utf-8")
 WEEKLY = (ROOT / "roles/common/templates/anacron-weekly.sh.j2").read_text(encoding="utf-8")
+MONTHLY = (ROOT / "roles/common/templates/anacron-monthly.sh.j2").read_text(encoding="utf-8")
 DAILY = (ROOT / "roles/common/templates/anacron.sh.j2").read_text(encoding="utf-8")
 
 
@@ -34,7 +35,10 @@ def _render(template: str, **variables: object) -> str:
             {"schedule": "30 4 * * 0", "command": "quick"},
             {"schedule": "40 4 * * 0", "command": "audit"},
             {"schedule": "50 4 * * 0", "command": "rootkit"},
-            {"schedule": "40 4 * * 4", "command": "integrity"},
+        ],
+        "scanner_schedule_monthly_jobs": [
+            {"schedule": "15 2 * * 6", "command": "full"},
+            {"schedule": "15 6 * * 6", "command": "integrity"},
         ],
     }
     base.update(variables)
@@ -70,7 +74,7 @@ def test_disabled_schedule_has_no_jobs() -> None:
 
 
 def test_enabled_clock_jobs_skip_aide_and_anacron_hosts() -> None:
-    enabled = _render(CRON, scanner_schedule_enabled=True)
+    enabled = _render(CRON, scanner_schedule_enabled=True, scanner_schedule_monthly_jobs=[])
     commands = [line.rsplit(maxsplit=1)[-1] for line in _jobs(enabled)]
     assert commands == ["quick", "audit", "rootkit"]
     assert "integrity" not in enabled
@@ -78,7 +82,19 @@ def test_enabled_clock_jobs_skip_aide_and_anacron_hosts() -> None:
 
     anacron = _render(CRON, scanner_schedule_enabled=True, scanner_anacron=True)
     assert _jobs(anacron) == []
-    assert "cron.weekly" in anacron
+    assert "cron.monthly" in anacron
+
+
+def test_monthly_jobs_are_first_saturday() -> None:
+    enabled = _render(CRON, scanner_schedule_enabled=True)
+    jobs = _jobs(enabled)
+    monthly = [line for line in jobs if "date" in line]
+    assert monthly == [
+        '15 2 * * 6 root [ "$(date +\\%d)" -le 7 ] && /usr/local/sbin/security-scan full',
+        '15 6 * * 6 root [ "$(date +\\%d)" -le 7 ] && /usr/local/sbin/security-scan integrity',
+    ]
+    weekly = [line for line in jobs if "date" not in line]
+    assert all(line.split()[4] == "0" for line in weekly)
 
 
 def test_anacron_weekly_runs_quick_audit_rootkit() -> None:
@@ -89,6 +105,12 @@ def test_anacron_weekly_runs_quick_audit_rootkit() -> None:
     assert "integrity" not in WEEKLY
     assert "cron.daily" not in DAILY
     assert "weekly only" in DAILY
+
+
+def test_anacron_monthly_runs_full_and_aide() -> None:
+    assert "security-scan full" in MONTHLY
+    assert "security-scan integrity" in MONTHLY
+    assert "security-scan quick" not in MONTHLY
 
 
 def _dow(schedule: str) -> str:
@@ -119,10 +141,20 @@ def test_homelab_inventory_is_weekly_and_enabled() -> None:
         "rootkit",
     }
     assert all(_dow(job["schedule"]) == "0" for job in prod["scanner_schedule_jobs"])
+    assert all_vars["scanner_aide_enabled"] is True
+    assert defaults["scanner_aide_enabled"] is False
+    assert defaults["scanner_schedule_monthly_jobs"] == []
+    assert {job["command"] for job in all_vars["scanner_schedule_monthly_jobs"]} == {
+        "full",
+        "integrity",
+    }
+    assert all(_dow(job["schedule"]) == "6" for job in all_vars["scanner_schedule_monthly_jobs"])
+    assert all(_dow(job["schedule"]) == "6" for job in prod["scanner_schedule_monthly_jobs"])
 
 
 def test_common_role_drops_anacron_daily() -> None:
     tasks = (ROOT / "roles/common/tasks/main.yml").read_text(encoding="utf-8")
     assert "cron.weekly/ansible-scanner" in tasks
+    assert "cron.monthly/ansible-scanner" in tasks
     assert "Remove leftover anacron daily helper" in tasks
     assert "anacron.sh.j2" not in tasks

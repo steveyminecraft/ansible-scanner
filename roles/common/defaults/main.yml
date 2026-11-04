@@ -24,6 +24,8 @@ scanner_cross_fs: false
 scanner_skip_on_battery: false
 scanner_anacron: false
 scanner_cron_quick_schedule: "15 4 * * 0"
+# Empty: collection default stays unscheduled. Homelab fills first-Saturday jobs.
+scanner_schedule_monthly_jobs: []
 scanner_report_retention_days: 90
 scanner_ntfy_url: ""
 scanner_alert_on_detection: true

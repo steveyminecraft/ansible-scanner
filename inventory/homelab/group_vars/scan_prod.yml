@@ -23,3 +23,8 @@ scanner_schedule_jobs:
     command: audit
   - schedule: "50 4 * * 0"
     command: rootkit
+scanner_schedule_monthly_jobs:
+  - schedule: "30 2 * * 6"
+    command: full
+  - schedule: "30 11 * * 6"
+    command: integrity
