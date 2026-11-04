@@ -150,6 +150,18 @@ def test_homelab_inventory_is_weekly_and_enabled() -> None:
     }
     assert all(_dow(job["schedule"]) == "6" for job in all_vars["scanner_schedule_monthly_jobs"])
     assert all(_dow(job["schedule"]) == "6" for job in prod["scanner_schedule_monthly_jobs"])
+    hosts = yaml.safe_load((ROOT / "inventory/homelab/hosts.yml").read_text(encoding="utf-8"))
+    pihole_hosts = hosts["all"]["children"]["scan_pihole"]["hosts"]
+    assert pihole_hosts["pihole-01"]["scanner_cron_quick_schedule"] != pihole_hosts["pihole-02"][
+        "scanner_cron_quick_schedule"
+    ]
+    assert _dow(pihole_hosts["pihole-01"]["scanner_cron_quick_schedule"]) == "0"
+    assert _dow(pihole_hosts["pihole-02"]["scanner_cron_quick_schedule"]) == "0"
+    p1_monthly = {_dow(job["schedule"]) for job in pihole_hosts["pihole-01"]["scanner_schedule_monthly_jobs"]}
+    p2_monthly = {_dow(job["schedule"]) for job in pihole_hosts["pihole-02"]["scanner_schedule_monthly_jobs"]}
+    assert p1_monthly == {"6"}
+    assert p2_monthly == {"5"}
+    assert p1_monthly.isdisjoint(p2_monthly)
 
 
 def test_common_role_drops_anacron_daily() -> None:

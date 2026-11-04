@@ -2,7 +2,9 @@
 
 ## 0.9.0
 
-- Homelab monthly deeper scan: first Saturday ClamAV `full` and AIDE `integrity` on always-on hosts.
+- Homelab monthly deeper scan: first occurrence of the host weekday ClamAV `full` and AIDE `integrity`.
+- Pi-holes: weekly Sunday quick at 03:20 vs 05:20; monthly deep on first Saturday (pihole-01) vs first Friday (pihole-02).
+- AIDE 0.18+ needs `--config`; `security-scan integrity` and the confirm-gated baseline/update playbooks pass `/etc/aide/aide.conf` when present.
 - Anacron hosts use `/etc/cron.monthly/ansible-scanner` for the same pair.
 - Weekly Sunday ClamAV quick (plus prod-01 Lynis/rkhunter) is unchanged.
 - Collection `scanner_schedule_monthly_jobs` default stays empty. Homelab enables AIDE.
