@@ -30,7 +30,8 @@ def test_full_scan_uses_cross_fs_no_by_default() -> None:
 def test_integrity_runs_aide_when_enabled() -> None:
     text = SCRIPT.read_text(encoding="utf-8")
     assert "run_aide" in text
-    assert "aide --check" in text
+    assert "aide_bin --check" in text
+    assert "--config" in text
     assert "integrity|rootkit" not in text or "run_aide" in text
 
 

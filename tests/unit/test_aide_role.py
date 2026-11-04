@@ -22,6 +22,7 @@ def test_baseline_requires_confirm() -> None:
     text = BASELINE.read_text(encoding="utf-8")
     assert "scanner_aide_confirm_baseline" in text
     assert "--init" in text
+    assert "--config" in text
     assert "unimplemented" not in text
 
 

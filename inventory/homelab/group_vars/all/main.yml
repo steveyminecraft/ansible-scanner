@@ -2,7 +2,7 @@
 scanner_enabled: true
 scanner_clamav_enabled: true
 scanner_lynis_enabled: true
-scanner_aide_enabled: false
+scanner_aide_enabled: true
 scanner_rkhunter_enabled: true
 scanner_chkrootkit_enabled: false
 scanner_schedule_enabled: true
@@ -27,6 +27,12 @@ scanner_ntfy_url: ""
 scanner_skip_on_battery: false
 scanner_anacron: false
 scanner_cron_quick_schedule: "15 4 * * 0"
+# First Saturday (day-of-month <= 7) so monthly full/AIDE miss weekly Sunday.
+scanner_schedule_monthly_jobs:
+  - schedule: "15 2 * * 6"
+    command: full
+  - schedule: "15 6 * * 6"
+    command: integrity
 scanner_exclude_fs_types:
   - proc
   - sysfs

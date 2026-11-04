@@ -270,6 +270,16 @@ run_rootkit() {
     $(takeover_args)
 }
 
+aide_bin() {
+  if [ -f /etc/aide/aide.conf ]; then
+    aide --config /etc/aide/aide.conf "$@"
+  elif [ -f /etc/aide.conf ]; then
+    aide --config /etc/aide.conf "$@"
+  else
+    aide "$@"
+  fi
+}
+
 run_aide() {
   if [ "$AIDE_ENABLED" != "1" ]; then
     not_implemented integrity
@@ -299,7 +309,7 @@ run_aide() {
   start=$(date +%s)
   set +e
   nice -n "$NICE" ionice -c 2 -n "$IONICE" \
-    aide --check >"$REPORT_DIR/aide-check.log" 2>&1
+    aide_bin --check >"$REPORT_DIR/aide-check.log" 2>&1
   code=$?
   set -e
   end=$(date +%s)
