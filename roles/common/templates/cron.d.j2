@@ -6,6 +6,7 @@ PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin
 # {{ scanner_cron_quick_schedule }} root /usr/local/sbin/security-scan quick
 {% elif scanner_anacron | bool %}
 # anacron owns the schedule via /etc/cron.weekly and /etc/cron.monthly.
+@reboot root test -x /usr/sbin/anacron && /usr/sbin/anacron
 {% else %}
 {% for job in scanner_schedule_jobs | default([{'schedule': scanner_cron_quick_schedule, 'command': 'quick'}]) %}
 {% if job.command in ['quick', 'full', 'malware'] and scanner_clamav_enabled | bool %}

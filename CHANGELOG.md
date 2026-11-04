@@ -6,6 +6,7 @@
 - Pi-holes: weekly Sunday quick at 03:20 vs 05:20; monthly deep on first Saturday (pihole-01) vs first Friday (pihole-02).
 - AIDE 0.18+ needs `--config`; `security-scan integrity` and the confirm-gated baseline/update playbooks pass `/etc/aide/aide.conf` when present.
 - Anacron hosts use `/etc/cron.monthly/ansible-scanner` for the same pair.
+- `scanner_anacron` installs the `anacron` package, sets `START_HOURS_RANGE=0-23`, and adds `@reboot` so due weekly/monthly jobs can start when a sleeping host wakes.
 - Weekly Sunday ClamAV quick (plus prod-01 Lynis/rkhunter) is unchanged.
 - Collection `scanner_schedule_monthly_jobs` default stays empty. Homelab enables AIDE.
 

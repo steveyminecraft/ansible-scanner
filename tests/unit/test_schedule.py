@@ -170,3 +170,13 @@ def test_common_role_drops_anacron_daily() -> None:
     assert "cron.monthly/ansible-scanner" in tasks
     assert "Remove leftover anacron daily helper" in tasks
     assert "anacron.sh.j2" not in tasks
+
+
+def test_anacron_hosts_install_package_and_reboot_hook() -> None:
+    tasks = (ROOT / "roles/common/tasks/main.yml").read_text(encoding="utf-8")
+    assert "Install anacron package" in tasks
+    assert "name: anacron" in tasks
+    anacron = _render(CRON, scanner_schedule_enabled=True, scanner_anacron=True)
+    assert "@reboot root test -x /usr/sbin/anacron && /usr/sbin/anacron" in anacron
+    hours = (ROOT / "roles/common/templates/anacron-default.j2").read_text(encoding="utf-8")
+    assert "START_HOURS_RANGE=0-23" in hours
