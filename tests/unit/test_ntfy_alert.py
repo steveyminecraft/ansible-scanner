@@ -97,6 +97,35 @@ def test_dedupe_writes_state_and_skips_second_post(tmp_path: Path) -> None:
     assert "FOUND" not in body
 
 
+def test_alert_includes_scan_type_and_component_detail(tmp_path: Path) -> None:
+    report = build_report(
+        hostname="pihole-02",
+        scan_type="integrity",
+        components={
+            "aide": {
+                "status": STATUS_ERROR,
+                "exit_code": 127,
+                "message": "ionice: failed to execute aide_bin: No such file or directory",
+            }
+        },
+    )
+    with patch("ntfy_alert._post") as post:
+        sent = maybe_notify(
+            report,
+            state_path=tmp_path / "ntfy-state.json",
+            url="http://127.0.0.1:9999/linux-security",
+            on_detection=True,
+            on_failure=True,
+        )
+    assert sent is True
+    body = post.call_args.args[1]
+    title = post.call_args.args[2]
+    assert title == "linux-security error pihole-02 integrity"
+    assert "aide status=error exit=127" in body
+    assert "message=ionice: failed to execute aide_bin: No such file or directory" in body
+    assert "scan_type=integrity" in body
+
+
 def test_rejects_non_http_url(tmp_path: Path) -> None:
     report = build_report(
         hostname="host",

@@ -271,13 +271,16 @@ run_rootkit() {
 }
 
 aide_bin() {
+  # ionice executes a program. Keep it inside this function so it runs aide,
+  # not a shell function named aide_bin.
   if [ -f /etc/aide/aide.conf ]; then
-    aide --config /etc/aide/aide.conf "$@"
+    set -- aide --config /etc/aide/aide.conf "$@"
   elif [ -f /etc/aide.conf ]; then
-    aide --config /etc/aide.conf "$@"
+    set -- aide --config /etc/aide.conf "$@"
   else
-    aide "$@"
+    set -- aide "$@"
   fi
+  nice -n "$NICE" ionice -c 2 -n "$IONICE" "$@"
 }
 
 run_aide() {
@@ -308,8 +311,7 @@ run_aide() {
   fi
   start=$(date +%s)
   set +e
-  nice -n "$NICE" ionice -c 2 -n "$IONICE" \
-    aide_bin --check >"$REPORT_DIR/aide-check.log" 2>&1
+  aide_bin --check >"$REPORT_DIR/aide-check.log" 2>&1
   code=$?
   set -e
   end=$(date +%s)
