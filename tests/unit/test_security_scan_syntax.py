@@ -33,6 +33,10 @@ def test_integrity_runs_aide_when_enabled() -> None:
     assert "aide_bin --check" in text
     assert "--config" in text
     assert "integrity|rootkit" not in text or "run_aide" in text
+    # ionice cannot execute a shell function; it must receive the aide binary.
+    collapsed = " ".join(text.split())
+    assert 'ionice -c 2 -n "$IONICE" aide_bin' not in collapsed
+    assert 'ionice -c 2 -n "$IONICE" "$@"' in text
 
 
 def test_rootkit_runs_rkhunter_when_enabled() -> None:

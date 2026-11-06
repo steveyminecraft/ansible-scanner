@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+- `security-scan integrity` runs `nice`/`ionice` inside `aide_bin`, so AIDE is the program ionice executes.
+- ntfy title includes the scan type. The body adds one line per component with status, exit code, and message. An AIDE failure with no explicit message uses the first log line.
+
 ## 0.9.0
 
 - Homelab monthly deeper scan: first occurrence of the host weekday ClamAV `full` and AIDE `integrity`.

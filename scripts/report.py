@@ -138,6 +138,25 @@ def write_latest_and_ndjson(report: dict[str, Any], latest: Path, ndjson: Path) 
         handle.write(json.dumps(report, sort_keys=True) + "\n")
 
 
+def _first_log_line(text: str, limit: int = 180) -> str:
+    for line in text.splitlines():
+        collapsed = " ".join(line.split())
+        if collapsed:
+            return collapsed[:limit]
+    return ""
+
+
+def _aide_message(exit_code: int, explicit: str, log_text: str) -> str:
+    """Use the first AIDE log line when the exit is a failure and no message was given."""
+    if explicit:
+        return explicit
+    code = int(exit_code)
+    failure = code >= 14 or (code != 0 and not (code & 7))
+    if not failure:
+        return ""
+    return _first_log_line(log_text)
+
+
 def _cli(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Write linux-security JSON reports")
     parser.add_argument("--hostname", required=True)
@@ -196,6 +215,7 @@ def _cli(argv: list[str] | None = None) -> int:
 
         changed = list(args.aide_changed_path)
         owned = list(args.aide_package_owned)
+        log_text = ""
         if args.aide_log:
             from aide_paths import classify_aide_log  # type: ignore[import-not-found]
 
@@ -203,6 +223,7 @@ def _cli(argv: list[str] | None = None) -> int:
             if ".." in log_path.parts:
                 print("aide-log path rejected", file=sys.stderr)
             elif log_path.is_file():
+                log_text = log_path.read_text(encoding="utf-8", errors="replace")
                 parsed_changed, parsed_owned = classify_aide_log(log_path)
                 changed.extend(parsed_changed)
                 owned.extend(parsed_owned)
@@ -214,7 +235,7 @@ def _cli(argv: list[str] | None = None) -> int:
             args.aide_exit,
             changed_paths=changed,
             package_owned_matching=owned,
-            message=args.aide_message,
+            message=_aide_message(args.aide_exit, args.aide_message, log_text),
         )
     if args.rkhunter_exit is not None:
         from rkhunter_status import rkhunter_status  # type: ignore[import-not-found]

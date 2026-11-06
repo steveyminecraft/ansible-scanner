@@ -78,6 +78,35 @@ def _counts(report: dict[str, Any]) -> tuple[int, int]:
     return detections, warnings
 
 
+def _one_line(value: Any, limit: int = 180) -> str:
+    return " ".join(str(value or "").split())[:limit]
+
+
+def _component_lines(report: dict[str, Any]) -> list[str]:
+    components = report.get("components")
+    if not isinstance(components, dict):
+        return []
+    lines: list[str] = []
+    for name, component in components.items():
+        if not isinstance(component, dict):
+            continue
+        parts = [f"{name} status={component.get('status', '')}"]
+        exit_code = component.get("exit_code")
+        if isinstance(exit_code, int):
+            parts.append(f"exit={exit_code}")
+        message = _one_line(component.get("message"))
+        if message:
+            parts.append(f"message={message}")
+        detections = int(component.get("detections") or 0)
+        if detections:
+            parts.append(f"detections={detections}")
+        warnings = int(component.get("warnings") or 0)
+        if warnings:
+            parts.append(f"warnings={warnings}")
+        lines.append(" ".join(parts))
+    return lines
+
+
 def _body(report: dict[str, Any], report_path: str) -> str:
     detections, warnings = _counts(report)
     return "\n".join(
@@ -87,9 +116,19 @@ def _body(report: dict[str, Any], report_path: str) -> str:
             f"overall_status={report.get('overall_status', '')}",
             f"detections={detections}",
             f"warnings={warnings}",
+            *_component_lines(report),
             f"report={report_path}",
         ]
     )
+
+
+def _title(report: dict[str, Any], status: str) -> str:
+    hostname = str(report.get("hostname", "unknown"))
+    scan_type = str(report.get("scan_type", "")).strip()
+    title = f"linux-security {status} {hostname}"
+    if scan_type:
+        title = f"{title} {scan_type}"
+    return title
 
 
 def maybe_notify(
@@ -117,8 +156,7 @@ def maybe_notify(
     if not should_notify(new_status, previous, on_detection=on_detection, on_failure=on_failure):
         return False
     path = report_path or str(state_path.parent / "latest.json")
-    hostname = str(report.get("hostname", "unknown"))
-    title = f"linux-security {new_status} {hostname}"
+    title = _title(report, new_status)
     try:
         _post(url, _body(report, path), title)
     except (urllib.error.URLError, TimeoutError, OSError) as exc:

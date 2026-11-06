@@ -50,6 +50,30 @@ def test_unowned_change_is_integrity() -> None:
     assert result["status"] == STATUS_INTEGRITY
 
 
+def test_cli_records_aide_failure_log_line(tmp_path: Path) -> None:
+    from report import _cli  # type: ignore[import-not-found]
+
+    log = tmp_path / "aide-check.log"
+    log.write_text("ionice: failed to execute aide_bin: No such file or directory\n", encoding="utf-8")
+    rc = _cli(
+        [
+            "--hostname",
+            "pihole-02",
+            "--scan-type",
+            "integrity",
+            "--output-dir",
+            str(tmp_path),
+            "--aide-exit",
+            "127",
+            "--aide-log",
+            str(log),
+        ]
+    )
+    assert rc == 1
+    loaded = __import__("json").loads((tmp_path / "latest.json").read_text())
+    assert loaded["components"]["aide"]["message"].startswith("ionice: failed to execute aide_bin")
+
+
 def test_cli_writes_integrity_report(tmp_path: Path) -> None:
     from report import _cli  # type: ignore[import-not-found]
 
