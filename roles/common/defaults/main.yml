@@ -23,6 +23,9 @@ scanner_scan_zfs_datasets: false
 scanner_cross_fs: false
 scanner_skip_on_battery: false
 scanner_anacron: false
+scanner_wait_for_backup: false
+scanner_backup_marker: /mnt/array01/backup/prod-01/.backup-complete
+scanner_backup_wait_seconds: 21600
 scanner_cron_quick_schedule: "15 4 * * 0"
 # Empty: collection default stays unscheduled. Homelab fills first-Saturday jobs.
 scanner_schedule_monthly_jobs: []

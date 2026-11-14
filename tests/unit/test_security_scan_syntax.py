@@ -53,6 +53,15 @@ def test_audit_runs_lynis_when_enabled() -> None:
     assert "run_lynis" in text
 
 
+def test_backup_hosts_wait_for_this_boot_mirror() -> None:
+    text = SCRIPT.read_text(encoding="utf-8")
+    assert "wait_for_backup" in text
+    assert "SCANNER_WAIT_FOR_BACKUP" in text
+    assert "SCANNER_BACKUP_MARKER" in text
+    assert 'pgrep -x rsync' in text
+    assert '"$cmd" = "status"' in text
+
+
 def test_all_continues_when_a_component_fails() -> None:
     text = SCRIPT.read_text(encoding="utf-8")
     assert "run_all" in text
