@@ -105,6 +105,49 @@ on_battery() {
   return 1
 }
 
+boot_epoch() {
+  up=$(cut -d. -f1 /proc/uptime)
+  now=$(date +%s)
+  echo $((now - up))
+}
+
+backup_marker_epoch() {
+  marker="$1"
+  if [ -f "$marker" ] && grep -qE '^finished_epoch=[0-9]+' "$marker" 2>/dev/null; then
+    grep -E '^finished_epoch=' "$marker" | head -n 1 | cut -d= -f2
+    return 0
+  fi
+  if [ -f "$marker" ]; then
+    stat -c %Y "$marker" 2>/dev/null || true
+  fi
+}
+
+backup_receive_busy() {
+  pgrep -x rsync >/dev/null 2>&1
+}
+
+wait_for_backup() {
+  if [ "${SCANNER_WAIT_FOR_BACKUP:-0}" != "1" ]; then
+    return 0
+  fi
+  marker="${SCANNER_BACKUP_MARKER:-/mnt/array01/backup/prod-01/.backup-complete}"
+  timeout="${SCANNER_BACKUP_WAIT_SECONDS:-21600}"
+  boot=$(boot_epoch)
+  start=$(date +%s)
+  deadline=$((start + timeout))
+  echo "security-scan: waiting for backup marker newer than boot (${boot})" >&2
+  while [ "$(date +%s)" -lt "$deadline" ]; do
+    stamp=$(backup_marker_epoch "$marker" || true)
+    if [ -n "${stamp:-}" ] && [ "$stamp" -ge "$boot" ] && ! backup_receive_busy; then
+      echo "security-scan: backup finished this boot; starting scan" >&2
+      return 0
+    fi
+    sleep 30
+  done
+  echo "security-scan: skipped; backup did not finish within ${timeout}s" >&2
+  exit 0
+}
+
 run_clamscan() {
   scan_type="$1"
   if [ "$CLAMAV_ENABLED" != "1" ]; then
@@ -395,6 +438,13 @@ main() {
     exit 0
   fi
 
+  if [ "$cmd" = "status" ]; then
+    cmd_status
+    return
+  fi
+
+  wait_for_backup
+
   case "$cmd" in
     quick|malware|full)
       exec 9>"$LOCKDIR/scan.lock"
@@ -439,9 +489,6 @@ main() {
       exec 8>"$HEAVY_LOCK"
       flock -n 8 || true
       run_all
-      ;;
-    status)
-      cmd_status
       ;;
     *)
       usage

@@ -1,5 +1,8 @@
 ---
 scanner_anacron: true
+# Anacron fires ~10 min after IPMI wake, while rsync is still running.
+scanner_wait_for_backup: true
+scanner_backup_marker: /mnt/array01/backup/prod-01/.backup-complete
 scanner_quick_paths:
   - /tmp
   - /var/tmp

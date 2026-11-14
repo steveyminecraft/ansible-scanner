@@ -117,6 +117,18 @@ def _dow(schedule: str) -> str:
     return schedule.split()[4]
 
 
+def test_backup_host_waits_for_nightly_mirror() -> None:
+    backup = yaml.safe_load(
+        (ROOT / "inventory/homelab/group_vars/scan_backup.yml").read_text(encoding="utf-8")
+    )
+    defaults = yaml.safe_load((ROOT / "roles/common/defaults/main.yml").read_text(encoding="utf-8"))
+    conf = (ROOT / "roles/common/templates/scanner.conf.j2").read_text(encoding="utf-8")
+    assert backup["scanner_wait_for_backup"] is True
+    assert defaults["scanner_wait_for_backup"] is False
+    assert "SCANNER_WAIT_FOR_BACKUP" in conf
+    assert "SCANNER_BACKUP_MARKER" in conf
+
+
 def test_homelab_inventory_is_weekly_and_enabled() -> None:
     all_vars = yaml.safe_load(
         (ROOT / "inventory/homelab/group_vars/all/main.yml").read_text(encoding="utf-8")
