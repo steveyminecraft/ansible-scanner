@@ -4,3 +4,6 @@ scanner_config_dir: /etc/linux-security
 scanner_lynis_cron_paths:
   - /etc/cron.d/lynis
   - /etc/cron.daily/lynis
+  - /etc/periodic/daily/lynis
+scanner_lynis_timer_names:
+  - lynis.timer

@@ -11,5 +11,11 @@ scanner_exclude_paths:
 scanner_aide_cron_paths:
   - /etc/cron.d/aide
   - /etc/cron.daily/aide
+  - /etc/cron.daily/dailyaidecheck
+  - /etc/periodic/daily/aide
+  - /etc/periodic/daily/dailyaidecheck
+scanner_aide_timer_names:
+  - aide.timer
+  - dailyaidecheck.timer
 scanner_aide_db: /var/lib/aide/aide.db.gz
 scanner_aide_db_new: /var/lib/aide/aide.db.new.gz

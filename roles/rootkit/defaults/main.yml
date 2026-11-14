@@ -5,3 +5,4 @@ scanner_config_dir: /etc/linux-security
 scanner_rkhunter_cron_paths:
   - /etc/cron.d/rkhunter
   - /etc/cron.daily/rkhunter
+  - /etc/periodic/daily/rkhunter

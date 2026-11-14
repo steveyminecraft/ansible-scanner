@@ -25,6 +25,17 @@
     group: root
     mode: "0750"
 
+- name: Disable distro Lynis systemd timers if present
+  ansible.builtin.service:
+    name: "{{ item }}"
+    enabled: false
+    state: stopped
+  loop: "{{ scanner_lynis_timer_names }}"
+  when:
+    - ansible_facts['service_mgr'] == 'systemd'
+    - not ansible_check_mode
+  failed_when: false
+
 - name: Stat distro Lynis cron jobs
   ansible.builtin.stat:
     path: "{{ item }}"
@@ -61,7 +72,7 @@
   when:
     - not ansible_check_mode
     - item.stat.exists | default(false)
-    - "'/cron.daily/' in item.stat.path"
+    - ("/cron.daily/" in item.stat.path) or ("/periodic/" in item.stat.path)
 
 - name: Stat disabled Lynis leftovers
   ansible.builtin.stat:
