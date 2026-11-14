@@ -16,6 +16,11 @@ def test_role_does_not_init_database() -> None:
     assert "aideinit" not in text
     assert "aide.conf.d" in text
     assert "CRON_DAILY_RUN" in text
+    assert "scanner_aide_timer_names" in text
+    defaults = ROLE.parents[1].joinpath("defaults/main.yml").read_text(encoding="utf-8")
+    assert "dailyaidecheck.timer" in defaults
+    assert "/etc/cron.daily/dailyaidecheck" in defaults
+    assert "/etc/periodic/daily/dailyaidecheck" in defaults
 
 
 def test_baseline_requires_confirm() -> None:

@@ -35,6 +35,8 @@ python3 -m venv .venv
 
 Collection `scanner_schedule_enabled` still defaults to **false**. Homelab inventory sets it **true** and runs jobs **once a week** (Sunday) plus a **monthly** deeper scan.
 
+Install takes over distro daily jobs: Debian 13 / Ubuntu `dailyaidecheck.timer` and `lynis.timer`, plus Alpine `/etc/periodic/daily` helpers, so those do not run beside ansible-scanner. `security-scan` waits on `scan.lock` so overlapping Sunday jobs queue instead of exiting.
+
 When that flag is true, always-on hosts write `scanner_schedule_jobs` into `/etc/cron.d/ansible-scanner`. The default weekly job is Sunday ClamAV quick. Pi-holes stagger Sunday quick (03:20 vs 05:20). prod-01 also runs Sunday Lynis and rkhunter. Monthly jobs (`scanner_schedule_monthly_jobs`) are the first matching weekday of the month (`date +%d` ≤ 7) ClamAV full then AIDE; Pi-holes use Saturday vs Friday so they do not share a deep-scan day. Hosts with `scanner_anacron` (silver-laptop, backup-01) keep the clock file empty, use `/etc/cron.weekly/ansible-scanner` for quick/Lynis/rkhunter, and `/etc/cron.monthly/ansible-scanner` for full and AIDE. silver-laptop keeps AIDE off and monthly jobs empty. backup-01 also sets `scanner_wait_for_backup` so those jobs wait until this boot's rsync marker is written.
 
 Homelab ntfy URL lives in gitignored `inventory/homelab/group_vars/all/ntfy.local.yml` (copy the `.example`). Keep `scanner_ntfy_url` empty in committed vars.

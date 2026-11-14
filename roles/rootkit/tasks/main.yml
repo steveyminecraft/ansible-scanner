@@ -90,7 +90,7 @@
   when:
     - not ansible_check_mode
     - item.stat.exists | default(false)
-    - "'/cron.daily/' in item.stat.path"
+    - ("/cron.daily/" in item.stat.path) or ("/periodic/" in item.stat.path)
 
 - name: Record rkhunter takeover
   ansible.builtin.copy:

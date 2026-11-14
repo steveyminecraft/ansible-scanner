@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Take over Debian 13 / Ubuntu `dailyaidecheck` and `lynis.timer` (and Alpine `/etc/periodic/daily`) so distro daily jobs do not run beside ansible-scanner.
+- `security-scan` waits up to 3 hours for `scan.lock`, so prod-01 Sunday Lynis/rkhunter are not dropped while ClamAV quick still holds the lock.
 - backup-01 waits for this boot's local mirror (and idle rsync) before ClamAV/Lynis/rkhunter/AIDE, so anacron does not scan during nightly receive.
 - `security-scan integrity` runs `nice`/`ionice` inside `aide_bin`, so AIDE is the program ionice executes.
 - ntfy title includes the scan type. The body adds one line per component with status, exit code, and message. An AIDE failure with no explicit message uses the first log line.

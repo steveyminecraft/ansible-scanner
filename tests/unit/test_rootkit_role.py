@@ -16,6 +16,9 @@ def test_role_installs_rkhunter_without_propupd() -> None:
     assert "CRON_DAILY_RUN" in text
     assert "--propupd" not in text
     assert "chkrootkit" in text
+    defaults = ROLE.parents[1].joinpath("defaults/main.yml").read_text(encoding="utf-8")
+    assert "/etc/periodic/daily/rkhunter" in defaults
+    assert "/periodic/" in text
 
 
 def test_propupd_requires_confirm() -> None:

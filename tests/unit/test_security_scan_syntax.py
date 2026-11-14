@@ -62,6 +62,14 @@ def test_backup_hosts_wait_for_this_boot_mirror() -> None:
     assert '"$cmd" = "status"' in text
 
 
+def test_scan_lock_waits_instead_of_skipping() -> None:
+    text = SCRIPT.read_text(encoding="utf-8")
+    assert "take_scan_lock" in text
+    assert 'flock -w "${SCANNER_LOCK_WAIT_SECONDS:-10800}" 9' in text
+    assert "flock -n 9" not in text
+    assert "flock -n 8 || true" in text
+
+
 def test_all_continues_when_a_component_fails() -> None:
     text = SCRIPT.read_text(encoding="utf-8")
     assert "run_all" in text

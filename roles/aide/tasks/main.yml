@@ -60,11 +60,12 @@
     - ansible_facts['os_family'] == 'Debian'
     - scanner_aide_default.stat.exists | default(false)
 
-- name: Disable aide systemd timer if present
+- name: Disable distro AIDE systemd timers if present
   ansible.builtin.service:
-    name: aide.timer
+    name: "{{ item }}"
     enabled: false
     state: stopped
+  loop: "{{ scanner_aide_timer_names }}"
   when:
     - ansible_facts['service_mgr'] == 'systemd'
     - not ansible_check_mode
@@ -114,7 +115,7 @@
   when:
     - not ansible_check_mode
     - item.stat.exists | default(false)
-    - "'/cron.daily/' in item.stat.path"
+    - ("/cron.daily/" in item.stat.path) or ("/periodic/" in item.stat.path)
 
 - name: Record AIDE takeover
   ansible.builtin.copy:

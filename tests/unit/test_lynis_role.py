@@ -13,3 +13,7 @@ def test_lynis_role_installs_when_enabled() -> None:
     assert "name: lynis" in text
     assert "lynis-takeover" in text
     assert ".disabled-by-ansible-scanner" in text
+    assert "scanner_lynis_timer_names" in text
+    defaults = ROLE.parents[1].joinpath("defaults/main.yml").read_text(encoding="utf-8")
+    assert "lynis.timer" in defaults
+    assert "/etc/periodic/daily/lynis" in defaults

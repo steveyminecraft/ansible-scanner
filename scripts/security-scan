@@ -445,47 +445,36 @@ main() {
 
   wait_for_backup
 
+  take_scan_lock() {
+    exec 9>"$LOCKDIR/scan.lock"
+    # Wait so Sunday quick (~30-50 min on prod-01) does not drop Lynis/rkhunter.
+    if ! flock -w "${SCANNER_LOCK_WAIT_SECONDS:-10800}" 9; then
+      echo "security-scan: another scan holds $LOCKDIR/scan.lock" >&2
+      exit 3
+    fi
+  }
+
   case "$cmd" in
     quick|malware|full)
-      exec 9>"$LOCKDIR/scan.lock"
-      if ! flock -n 9; then
-        echo "security-scan: another scan holds $LOCKDIR/scan.lock" >&2
-        exit 3
-      fi
+      take_scan_lock
       exec 8>"$HEAVY_LOCK"
       flock -n 8 || true
       run_clamscan "$cmd"
       ;;
     audit)
-      exec 9>"$LOCKDIR/scan.lock"
-      if ! flock -n 9; then
-        echo "security-scan: another scan holds $LOCKDIR/scan.lock" >&2
-        exit 3
-      fi
+      take_scan_lock
       run_lynis
       ;;
     integrity)
-      exec 9>"$LOCKDIR/scan.lock"
-      if ! flock -n 9; then
-        echo "security-scan: another scan holds $LOCKDIR/scan.lock" >&2
-        exit 3
-      fi
+      take_scan_lock
       run_aide
       ;;
     rootkit)
-      exec 9>"$LOCKDIR/scan.lock"
-      if ! flock -n 9; then
-        echo "security-scan: another scan holds $LOCKDIR/scan.lock" >&2
-        exit 3
-      fi
+      take_scan_lock
       run_rootkit
       ;;
     all)
-      exec 9>"$LOCKDIR/scan.lock"
-      if ! flock -n 9; then
-        echo "security-scan: another scan holds $LOCKDIR/scan.lock" >&2
-        exit 3
-      fi
+      take_scan_lock
       exec 8>"$HEAVY_LOCK"
       flock -n 8 || true
       run_all
